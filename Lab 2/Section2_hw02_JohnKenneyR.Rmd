@@ -1,0 +1,143 @@
+---
+title: "Fall W271 Lab 2"
+author: "John Kenney"
+date: "October 9, 2017"
+output: pdf_document
+---
+
+
+###House Keeping
+```{r}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+
+#Libraries required 
+library(car)
+library(dplyr)
+library(Hmisc)#Used by author for 3D plotting
+library(ggplot2)
+
+library(effsize) #Used to calculate Cohen's D for T-Test
+library(aod)    #Used for effect size of the logit model
+library(mcprofile) #Used for confidence intervals
+```
+
+##Exploratory Data Analysis
+We begin with an exploration of the data. Let's first look at our data at a high level.
+
+```{r}
+my.data = read.csv("C:\\Users\\jkenney\\Dropbox\\UCB\\Fall 2017\\W271\\Labs\\Lab 2\\lab2data.csv", header = TRUE)
+glimpse(my.data)
+```
+
+We have 1,000 observations, each with 12 associated variables.
+
+```{r}
+#X Variable
+describe(my.data$X)
+min(my.data$X)
+max(my.data$X)
+```
+
+It looks like this is the ID of the respondent, since there are 1000 unique numbers.
+
+```{r}
+#Gender Variable
+describe(my.data$Gender)
+```
+
+There is a reasonably equal proportion of men and women in the sample.
+
+```{r}
+#Class Year Variable
+describe(my.data$Class.Year)
+```
+
+Here we have five classes for graduation year that look to be coded in ten year intervals: 
+
+1. 1972-1981
+2. 1982-1991
+3. 1992-2001
+4. 2002-2011
+5. 2012-Present
+
+It seems the proportion of respondents is not independent of the graduation class.  The more recently graduated students make up a greater proportion of the sample than older graduates.  This distribution looks to be ordinal.
+
+```{r}
+ggplot(my.data, aes(x = Class.Year)) + geom_bar(aes(y=..count..), fill = "#1268AE", colour = "black")+ ggtitle("Graduation Decade") + theme(plot.title = element_text(lineheight = 1, face = "bold"))
+```
+
+```{r}
+#Marital Status Variable
+describe(my.data$Marital.Status)
+```
+
+We have four classes for the Marital Status varible:
+
+1. Divorced
+2. Married
+3. Single
+4. Widowed
+
+```{r}
+ggplot(my.data, aes(x = Marital.Status)) + geom_bar(aes(y=..count..), fill = "#1268AE", colour = "black")+ ggtitle("Graduation Decade") + theme(plot.title = element_text(lineheight = 1, face = "bold"))
+```
+```{r}
+#Marital Status Variable
+describe(my.data$Major)
+```
+
+We have forty-five distinct classes for the Major!  Wow.  Let's take a look at a bar chart
+
+```{r}
+my.data.major.count = as.data.frame(sort(table(my.data$Major), decreasing = TRUE)[1:20])
+ggplot(my.data.major.count, aes(x = Var1, y = Freq)) + geom_bar(stat = "identity", fill = "#1268AE", colour = "black")+ ggtitle("Top 20 Majors") + theme(plot.title = element_text(lineheight = 1, face = "bold")) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + xlab("Major") + ylab("Count")
+```
+
+
+```{r}
+#Next Degree Variable
+summary(my.data$Next.Degree)
+my.data.next.degree = as.data.frame(sort(table(my.data$Next.Degree), decreasing = TRUE)[1:20])
+my.data.next.degree
+my.data.next.degree$Freq
+ggplot(my.data.next.degree, aes(x = Var1, y = Freq)) + geom_bar(stat = "identity", fill = "#1268AE", colour = "black")+ ggtitle("Top 20 Next Degrees") + theme(plot.title = element_text(lineheight = 1, face = "bold")) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + xlab("Degree") + ylab("Count")
+```
+
+Now on to Event Attendance...
+```{r}
+describe(my.data$AttendenceEvent)
+```
+More in attendance than not with 60% attending an event.
+
+Finally, on to giving, our dependent variables.
+
+$ FY12Giving      <dbl> 50, 0, 100, 0, 0, 0, 0, 5, 0, 0, 0, 0, 10, 0, 0, 0, 0, 20, 100, 30, 100, 0, 0, 50, 50, 0, 0, 0, 0, 50, 500...
+$ FY13Giving      <dbl> 51, 0, 0, 0, 0, 0, 0, 10, 0, 75, 0, 0, 0, 0, 0, 5, 0, 50, 160, 0, 75, 0, 0, 100, 75, 0, 0, 0, 0, 50, 500, ...
+$ FY14Giving      <dbl> 51, 0, 100, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 200, 0, 0, 0, 0, 156, 50, 0, 0, 0, 0, 50, 1000,...
+$ FY15Giving      <dbl> 0, 0, 100, 0, 0, 0, 0, 25, 0, 0, 0, 0, 10, 0, 0, 0, 0, 50, 150, 50, 0, 0, 0, 157, 80, 0, 0, 0, 500, 50, 15...
+$ FY16Giving
+```{r}
+describe(my.data$FY12Giving)
+describe(my.data$FY13Giving)
+describe(my.data$FY14Giving)
+describe(my.data$FY15Giving)
+describe(my.data$FY16Giving)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
