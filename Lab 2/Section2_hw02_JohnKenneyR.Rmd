@@ -99,8 +99,6 @@ ggplot(my.data.major.count, aes(x = Var1, y = Freq)) + geom_bar(stat = "identity
 #Next Degree Variable
 summary(my.data$Next.Degree)
 my.data.next.degree = as.data.frame(sort(table(my.data$Next.Degree), decreasing = TRUE)[1:20])
-my.data.next.degree
-my.data.next.degree$Freq
 ggplot(my.data.next.degree, aes(x = Var1, y = Freq)) + geom_bar(stat = "identity", fill = "#1268AE", colour = "black")+ ggtitle("Top 20 Next Degrees") + theme(plot.title = element_text(lineheight = 1, face = "bold")) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + xlab("Degree") + ylab("Count")
 ```
 
