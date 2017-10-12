@@ -26,11 +26,10 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
 
 #Libraries required 
 library(car)
-library(plyr)
 library(dplyr)
 library(Hmisc)#Used by author for 3D plotting
 library(ggplot2)
-
+library(gridExtra)
 library(effsize) #Used to calculate Cohen's D for T-Test
 library(aod)    #Used for effect size of the logit model
 library(mcprofile) #Used for confidence intervals
@@ -56,11 +55,26 @@ FY16Giving: Given that the vast majority of people did not give in 2016 and the 
 
 
 
-```{r, fig.height=3, fig.width=8}
-par(mfrow=c(1,2))
-a=count(dt$FY16Giving)
-hist(dt$FY16Giving, breaks ='fd', xlab="2016 Contribution", main= "Distribution of 2016 Contributions")
-hist(log10(dt$FY16Giving), breaks =10, xlab="Log(2016 Contributions)", main="Distribution of Log(2016 Contributions)")
+```{r}
+
+
+h1 = ggplot(data=dt[FY16Giving>0],aes(x=FY16Giving)) +
+  geom_histogram(bins=20) +
+  ggtitle("Dist. of 2016 Contributions \nGivers Only $ Scale") + 
+  theme(plot.title = element_text(lineheight=1))
+h2 = ggplot(data=dt[FY16Giving>0],aes(x=log10(FY16Giving))) +
+  geom_histogram(bins=20) +
+  ggtitle("Dist. of 2016 Contributions\nGivers Only - Log10 $ Scale") +
+  xlab("Log10 Contributions")
+  theme(plot.title = element_text(lineheight=1, face="bold"))
+  
+grid.arrange(h1,h2,ncol=2)
+
+```
+The distribution of log wages is somewhat normal, with the majority less than $100, and a tail that stretches into 4 digits
+
+Log is base 10 because meaning is more inuitive than a natural log
+
 ```
 Let's look at a distribution of just the "givers" (i.e. take out the zero contributions) to get a better picture.  
 
@@ -96,16 +110,6 @@ plot(jitter(as.numeric(FY16GivingCat),2)~jitter(as.numeric(FY15GivingCat),1.5),d
 
 So there is strong correlation between giving in one year and another
 Distribution of log give (minus the 0's)
-```{r}
-ggplot(dt[FY16Giving>0],aes(x=log10(FY16Giving))) +
-  geom_histogram(aes(y = ..density..), binwidth = 0.4, fill="#0072B2", colour="black") +
-  ggtitle("Log(base 10) Give") + 
-  theme(plot.title = element_text(lineheight=1, face="bold"))
-
-```
-The distribution of log wages is somewhat normal, with the majority less than $100, and a tail that stretches into 4 digits
-
-Log is base 10 because meaning is more inuitive than a natural log
 
 ```{r}
 ggplot(dt,aes(factor(AttendenceEvent),as.numeric(FY16GivingCat))) +
