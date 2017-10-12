@@ -71,13 +71,10 @@ grid.arrange(h1,h2,ncol=2)
 
 ```
 
+Most of the alumni contributed \$0; so we see a big spike at 0 and then it tapers off quickly.  Let's do a log-transformation to see the distribution more clearly (note: 0 contributions are excluded in the log-transformed plot). The log-transformed distribution looks somewhat normal - with a few contributions in the tens of thousands of dollars.  
 
-The distribution of log wages is somewhat normal, with the majority less than $100, and a tail that stretches into 4 digits
-
-Log is base 10 because meaning is more inuitive than a natural log
-
-```
 Let's look at a distribution of just the "givers" (i.e. take out the zero contributions) to get a better picture.  
+
 ```{r}
 
 h1 = ggplot(data=dt[FY16Giving>0],aes(x=FY16Giving)) +
@@ -93,23 +90,34 @@ h2 = ggplot(data=dt[FY16Giving>0],aes(x=log10(FY16Giving))) +
 grid.arrange(h1,h2,ncol=2)
 
 ```
+Distribution on the left shows that there are many who contribute very small amounts.  So the distribution is still very skewed; so a log-transform might help us see the distribution better.
 
 Let's group the 2016 contributions by the categories that the university is interested in. 
 
 ```{r}
 dt$FY16GivingCat<-cut(dt$FY16Giving,c(0,1,100,250,500,200000),right=FALSE)
-summary(dt$FY16GivingCat)
+#summary(dt$FY16GivingCat)
+describe(dt$FY12GivingCat)
 ```
 
+Let's do it for other years as well to see how the distributions look.
 
-
-Do it for other years as well
 ```{r}
 dt$FY15GivingCat<-cut(dt$FY15Giving,c(0,1,100,250,500,200000),right=FALSE)
+describe(dt$FY15GivingCat)
 dt$FY14GivingCat<-cut(dt$FY14Giving,c(0,1,100,250,500,200000),right=FALSE)
+describe(dt$FY14GivingCat)
 dt$FY13GivingCat<-cut(dt$FY13Giving,c(0,1,100,250,500,200000),right=FALSE)
+describe(dt$FY13GivingCat)
 dt$FY12GivingCat<-cut(dt$FY12Giving,c(0,1,100,250,500,200000),right=FALSE)
+describe(dt$FY12GivingCat)
+
 ```
+
+Each year, roughly half the alumni population do not give anything.  20-25%% give less than \$100;  Around 14% Give \$100-250; About 4% give \$250-500 and less than 1% give more than $500.  In 2013, we had the highest percentage of the Alumni contributing (about 49%) and 2015 marked the lowest % giving (43%)
+
+
+##Bivariate Analysis:  
 
 And do a scatterplot matrix
 
@@ -118,7 +126,6 @@ plot(jitter(as.numeric(FY16GivingCat),2)~jitter(as.numeric(FY15GivingCat),1.5),d
 ```
 
 So there is strong correlation between giving in one year and another
-Distribution of log give (minus the 0's)
 
 ```{r}
 ggplot(dt,aes(factor(AttendenceEvent),as.numeric(FY16GivingCat))) +
