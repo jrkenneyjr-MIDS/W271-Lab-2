@@ -57,6 +57,28 @@ FY16Giving: Given that the vast majority of people did not give in 2016 and the 
 
 ```{r}
 
+h1 = ggplot(data=dt,aes(x=FY16Giving)) +
+  geom_histogram(bins=20) +
+  ggtitle("Dist. of 2016 Contributions \n All Only $ Scale") + 
+  theme(plot.title = element_text(lineheight=1))
+h2 = ggplot(data=dt,aes(x=log10(FY16Giving))) +
+  geom_histogram(bins=20) +
+  ggtitle("Dist. of 2016 Contributions\n All - Log10 $ Scale") +
+  xlab("Log10 Contributions")
+  theme(plot.title = element_text(lineheight=1, face="bold"))
+  
+grid.arrange(h1,h2,ncol=2)
+
+```
+
+
+The distribution of log wages is somewhat normal, with the majority less than $100, and a tail that stretches into 4 digits
+
+Log is base 10 because meaning is more inuitive than a natural log
+
+```
+Let's look at a distribution of just the "givers" (i.e. take out the zero contributions) to get a better picture.  
+```{r}
 
 h1 = ggplot(data=dt[FY16Giving>0],aes(x=FY16Giving)) +
   geom_histogram(bins=20) +
@@ -69,19 +91,6 @@ h2 = ggplot(data=dt[FY16Giving>0],aes(x=log10(FY16Giving))) +
   theme(plot.title = element_text(lineheight=1, face="bold"))
   
 grid.arrange(h1,h2,ncol=2)
-
-```
-The distribution of log wages is somewhat normal, with the majority less than $100, and a tail that stretches into 4 digits
-
-Log is base 10 because meaning is more inuitive than a natural log
-
-```
-Let's look at a distribution of just the "givers" (i.e. take out the zero contributions) to get a better picture.  
-
-```{r, fig.height=3, fig.width=8}
-par(mfrow=c(1,2))
-hist(dt[FY16Giving>0]$FY16Giving, breaks=20, main="Dist of 2016  Contributions \n Givers Only", xlab= "2016 Contributions")
-hist(log(dt[FY16Giving>0]$FY16Giving), breaks=20, main="Dist of Log(2016 Contributions) \n Givers only", xlab= "Log(2016 Contributions)")
 
 ```
 
