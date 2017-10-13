@@ -8,16 +8,24 @@ fontsize: 11pt
 geometry: margin=0.75in
 ---
 
-#Introduction:  
-We have been hired by a Private University to identify who among their Alumni are most likely to contribute towards the University's foundation in future years. The university has provided us with data on past contributions from graduates - data includes some demographic information (like gender, marital status etc.), some university specific information (graduation year, major of studies), and some post-graduation information (Alumni event attendance, historical contributions).  
-## We have taken two approaches to the problem (named Beta-Hat and Y-Hat):  
-##Approach Beta-Hat:
+#SECTION - 1 INTRODUCTION & KEY RESULTS
+
+##Problem Introduction:  
+We have been hired by a Private University to identify who among their Alumni are most likely to contribute towards the University's foundation in future years. The university has provided us with data on past contributions from graduates - data includes some demographic information (like gender, marital status),  university specific information (graduation year, major of studies), and some information on how "connected"" an Alumnus is to the school (Alumni event attendance, historical contributions).  
+
+##1.1 HIGH LEVEL DESCRIPTION OF MODELING APPROACH:  
+We have taken two approaches to the problem (named Beta-Hat and Y-Hat):  
+Approach "Beta-Hat":
 We will treat the problem as a "explanation" problem ($\hat{\beta}$).  The goal here is to figure out if and how much certain aspects of a person and their association with the university determines how much they will contribute to the university's foundation.  We will develop a regression model that considers the 2016 contributions as a variable that depends on one or more of the other data elements that have been provided.  The regression coefficients can then be interpreted as a measure of how much each aspect of a person influences their contributions.  
 
-##Approach Y-Hat:  
+Approach "Y-Hat":  
 We will treat the problem as a "prediction" problem ($\hat{y}$ problem).  Given all the data we have about a person and their past contributions, can we predict how much they will contribute in the future.  We will develop a model that aims to predict the 2016 contribution amounts for each person.  To evaluate the efficacy of our models, we will split the data into a "training" set and a "test" set. We will use the training data to estimate parameters for our prediction model and evaluate our model's prediction accuracy using the test set.  
 
+##1.2 KEY RESULTS AND TECHNIQUES USED:  
+We will complete this section once we are done with the modeling work.
 
+
+#SECTION 2 - DATA EXAMINATION AND EDA:
 
 
 ```{r}
@@ -34,21 +42,39 @@ library(effsize) #Used to calculate Cohen's D for T-Test
 library(aod)    #Used for effect size of the logit model
 library(mcprofile) #Used for confidence intervals
 
+library(package = MASS)  # Location of parcoord() function
+library(vcd)
+
+
 library(data.table)
 ```
 
-### Read Data
 
 ```{r}
 dt<-fread("lab2data.csv")
 describe(dt)
+majortable= as.data.frame(round(prop.table(table(dt$Major)),2))
+degtable= as.data.frame(round(prop.table(table(dt$Next.Degree)),2))
+
 ```
+
+##2.1 Brief Description of Data Available:  
+We have data for 1000 past graduates of the University.  There are 12 variables provided for each Alumnus.  They are:
+1. V1: Identifier for each record (Alumnus)  
+2. Gender: M/F, roughly 50/50 in the sample provided. 
+3. Class.Year: Appears like the "decade" of the graduating year.  Goes from 1972 - 2012. We will assume 1972 represents students graduating from 1963-1972; 1982 represents students graduating from 1973 to 1982 etc.  
+4. Marital.Status: Has 4 categories - coded D,M,S,W. We will assume it means Divorced, Married, Single, Widowed with over 90% in the "married" or "single" categories.  
+5. Major:  There are 45 majors represented in the sample.  History,  English, Biology & Economics are the top 4 representing about 37% of the sample.  
+6. Next.Degree: We assume this means what the alumnus went on to do after graduating from the university.  38% shows "None" implying they did not pursue another degree.  The remainder (62%) seems rather high for this metric.  
+7. AttendenceEvent: Indicates whether the alumnus attended an alumni event between 2012 and 2015. If we choose to use this variable to model "Giving" we should probably not use it to model 2012-2014 Giving  
+8. FYGiving: There are 5 of these variables named FY12 - FY16 representing full year 2012 through full year 2016 contribution from the alumnus. There are some "outliers" (e.g. $161,500 in 2013) in the data that we may need to be on the lookout for.  
+
 
 We do not have any missing values in the data; and there do not seem to be an obvious "data cleaning" that needs to be conducted.  We will conduct an Exploratory Data Analysis next.  
 
-# Exploratory Data Analysis:  
+##2.2 Exploratory Data Analysis:  
 
-##Univariate Analysis:  
+##2.2.1 Univariate Analysis:  
 Let's examine each variable first starting with the "variable of interest" - 2016 contributions.
 
 FY16Giving: Given that the vast majority of people did not give in 2016 and the skewness of the data (with a few large contributions) - let's also look at the distribution after a log-transformation (this is something we may want to consider for our modeling purposes)  
@@ -112,18 +138,57 @@ describe(dt$FY13GivingCat)
 dt$FY12GivingCat<-cut(dt$FY12Giving,c(0,1,100,250,500,200000),right=FALSE)
 describe(dt$FY12GivingCat)
 
+# create an indicator for "giver" and "non giver" for each year.
+dt$Giver16 = as.integer(dt$FY16Giving>0)
+dt$Giver15 = as.integer(dt$FY15Giving>0)
+dt$Giver14 = as.integer(dt$FY14Giving>0)
+dt$Giver13 = as.integer(dt$FY13Giving>0)
+dt$Giver12 = as.integer(dt$FY12Giving>0)
+
 ```
 
 Each year, roughly half the alumni population do not give anything.  20-25%% give less than \$100;  Around 14% Give \$100-250; About 4% give \$250-500 and less than 1% give more than $500.  In 2013, we had the highest percentage of the Alumni contributing (about 49%) and 2015 marked the lowest % giving (43%)
 
 
-##Bivariate Analysis:  
+##2.2.2 Bivariate Analysis:  
 
 ###Giving in 2016 vs. 2015:  
-Let's look at how 2016 giving relates to 2015.  The plot shows that there is a reasonable correlation between the two (note the density of dots along the diagonal)
+Let's look at how 2016 giving relates to 2015.  The plot shows that there is a reasonable correlation between the two (note the density of dots along the diagonal). It is also statistically confirmed by the Likelihood Ratio Test for independence where we reject the $H_0$: Giving Category in 2016 is Independent of Giving category in 2015.  
+We also conducted the test for each of the other years.  Each of the tests show that there is a dependence between 2016 giving and past years' giving category.  Essentially, what we are observing is that someone's giving category in 2016 is most likely to be the same as their past; it is also interesting to note that in most instances the second highest category is the "[0,1)" category - so basically either they give like they have given in the past or not give at all!  
+
 
 ```{r}
 plot(jitter(as.numeric(FY16GivingCat),2)~jitter(as.numeric(FY15GivingCat),1.5),data=dt,pch=20)
+
+#Generic function to perform xtab on two variables and conduct LRT test of independence.
+
+GenXtab = function(dframe, x1,x2, nlist){
+  x1vsx2= xtabs(formula = ~x1+x2, data=dframe)
+  names(dimnames(x1vsx2)) = nlist
+  print(x1vsx2)
+  print("Percentage of Column Totals Shown Below")
+  print(round(prop.table(x1vsx2, 2),2))
+  assocstats(x1vsx2)
+}
+
+GenXtab(dt, dt$Giver16, dt$Giver15, c("FY16","FY15"))
+GenXtab(dt, dt$FY16GivingCat, dt$FY15GivingCat, c("FY16","FY15"))
+
+
+GenXtab(dt, dt$Giver16, dt$Giver14, c("FY16","FY14"))
+GenXtab(dt, dt$FY16GivingCat, dt$FY14GivingCat, c("FY16","FY14"))
+
+
+GenXtab(dt, dt$Giver16, dt$Giver13, c("FY16","FY13"))
+GenXtab(dt, dt$FY16GivingCat, dt$FY13GivingCat, c("FY16","FY13"))
+
+
+GenXtab(dt, dt$Giver16, dt$Giver12, c("FY16","FY12"))
+GenXtab(dt, dt$FY16GivingCat, dt$FY12GivingCat, c("FY16","FY12"))
+
+
+
+
 ```
 
 ###Giving in 2016 vs. Alumni Event Attendance:  
@@ -137,8 +202,14 @@ ggplot(dt,aes(factor(AttendenceEvent),as.numeric(FY16GivingCat))) +
   scale_y_continuous(name="Giving Category",breaks=1:5,labels=c("[0,1)","[1,100)","[100,250)",
                                                                 "[250,500)","[500,2e+05)")) +
   theme(plot.title = element_text(lineheight=1, face="bold")) 
+
+GenXtab(dt, dt$Giver16, dt$AttendenceEvent, c("FY16","Attendance"))
+GenXtab(dt, dt$FY16GivingCat, dt$AttendenceEvent, c("FY16","Attendance"))
+
+
 ```
-So there does seem to be a relationship between giving in 2016 and attendence at alumni events.
+So there does seem to be a relationship between attendence at alumni events in 2012-2015 and 2016 giving.  50% of those attending gave in 2016 while only 28% of those not attending gave in 2016.  
+
 
 ###Giving in 2016 by  Marital status:  
 
@@ -152,11 +223,17 @@ ggplot(dt,aes(factor(Marital.Status),as.numeric(FY16GivingCat))) +
   scale_y_continuous(name="Giving Category",breaks=1:5,labels=c("[0,1)","[1,100)","[100,250)",
                                                                 "[250,500)","[500,2e+05)")) +
   theme(plot.title = element_text(lineheight=1, face="bold")) 
+
+
+GenXtab(dt, dt$Giver16, dt$Marital.Status, c("FY16","Marital Status"))
+GenXtab(dt, dt$FY16GivingCat, dt$Marital.Status, c("FY16","Marital Status"))
+
+
 ```
 
-Most of the Alumni fall into either Married or Single category and it appears like Married Alumni are more likely to give than single.  
-There are very few data points for Widowed and Single alumni - so we do not want to make broad conclusions, but it appear that there are both single and Widowed Alumni that contribute high amounts (and there are those that contribute nothing too in these categories)
-One possible reason we are seeing this pattern (married giving more than single) might actually have to do with age.  Older Alumni are more likely to be married and older alumni are also probably a bit more well established financially - so more likely to contribute to charitable causes. So Marital status vs. Giving might simply be capturing the relationship between Age and Giving. While age is not a variable that's available in the dataset, we have "Class Year" which is a good proxy for age.  
+Most of the Alumni fall into either Married or Single category and  Married Alumni are more likely to give than Single.  
+There are very few data points for Widowed and Divorced alumni - so we do not want to make broad conclusions, but it appears that there are both Divorced and Widowed Alumni that contribute high amounts (and there are those that contribute nothing too in these categories)
+One possible reason we are seeing Married giving more than Single might actually have to do with age.  Older Alumni are more likely to be married and older alumni are also probably a bit more well established financially - so more likely to contribute to charitable causes. So Marital status vs. Giving might simply be capturing the relationship between Age and Giving. While age is not a variable that's available in the dataset, we have "Class Year" which is a good proxy for age.  
 
 
 ### Giving 2016 vs. Class Year:  
@@ -170,20 +247,26 @@ ggplot(dt,aes(factor(Class.Year),as.numeric(FY16GivingCat))) +
   scale_y_continuous(name="Giving Category",breaks=1:5,labels=c("[0,1)","[1,100)","[100,250)",
                                                                 "[250,500)","[500,2e+05)")) +
   theme(plot.title = element_text(lineheight=1, face="bold")) 
+
+
+GenXtab(dt, dt$Giver16, dt$Class.Year, c("FY16","Class"))
+GenXtab(dt, dt$FY16GivingCat, dt$Class.Year, c("FY16","Class"))
+
+  
 ```
-Here, it indeed looks like the older the alumnus, the more likely he or she is to give money.Unfortunately, the boxplot by category misses a lot of data, so we can try to instead do a boxplot of the log of 2016 giving, minus the people who donated nothing.  
+Here, it indeed looks like the older the alumnus, the more likely he or she is to give money.
 
 ```{r}
-ggplot(dt[FY16Giving>0],aes(factor(Class.Year),log10(FY16Giving))) +
+
+ggplot(dt[dt$FY16Giving>0,],aes(factor(Class.Year),as.numeric(FY16GivingCat))) +
   geom_boxplot(aes(fill=factor(Class.Year))) +
-  ggtitle("Log(base10) Giving by Class Year") +
+  ggtitle("Giving Category by Class Year") +
   geom_jitter() +
   scale_x_discrete(name="Class Year")+
-  scale_y_continuous(name="Log(base 10) Giving") +
+  scale_y_continuous(name="Giving Category",breaks=1:5,labels=c("[0,1)","[1,100)","[100,250)",
+                                                                "[250,500)","[500,2e+05)")) +
   theme(plot.title = element_text(lineheight=1, face="bold")) 
 ```
-
-So for those who do donate, there seems to a clear trend that older alumni donate more. 
 
 ### Giving in 2016 by Gender:  
 
@@ -196,9 +279,13 @@ ggplot(dt,aes(Gender,as.numeric(FY16GivingCat))) +
   scale_y_continuous(name="Giving Category",breaks=1:5,labels=c("[0,1)","[1,100)","[100,250)",
                                                                 "[250,500)","[500,2e+05)")) +
   theme(plot.title = element_text(lineheight=1, face="bold")) 
-```
-It's a little hard to tell- since it does look like men donate a bit more to the university, but it's also possible that there are fewer female alumni (fewer women attended college in 1972)  
 
+GenXtab(dt, dt$Giver16, dt$Gender, c("Giver16", "Gender"))
+GenXtab(dt, dt$FY16GivingCat, dt$Gender, c("FY16", "Gender"))
+
+
+```
+There is no statistical evidence that whether or not Alumni Give in 2016 varies by Gender (41% of Females Gave vs. 42% of Males). However when we look at the categories of contribution in 2016 by Gender, we see differences that cause us to reject the hypothesis that Gender and Giving Category in 2016 are independent. There may be other factors at play here, for e.g. we know that older alumni tend to give more than younger alumni; it is possible that there are fewer "older" female alumni (fewer women attended college in 1972) than Male. 
 
 
 ```{r}
@@ -212,7 +299,15 @@ ggplot(dt[FY16Giving>0],aes(Gender,log10(FY16Giving))) +
 ```
 Of those that donate, men donate more. But we can't be sure this is significant as the median man donated less than the 75th percentile woman.
 
-Try class year split by male and female:
+Is there a relationship between Gender and Class Year i.e. do we see a higher proportion of "Men" in the sample as age goes up (proxy for age is Class Year)?  
+```{r}
+
+GenXtab(dt, dt$Gender, dt$Class.Year, c("Gender", "ClassYear"))
+```
+We do see that there are a higher proportion of Men in 1972 & 1982 compared to more recent years. Based the test for independence, we see that there is dependence between "Class Year" (or age) and Gender.  
+
+
+So let's look at Contribution by class year split by male and female:
 
 
 ```{r}
@@ -223,7 +318,10 @@ ggplot(dt,aes(factor(Class.Year),as.numeric(FY16GivingCat))) +
   scale_x_discrete(name="Class Year")+
   scale_y_continuous(name="Giving Category",breaks=1:5,labels=c("[0,1)","[1,100)","[100,250)",
                                                                 "[250,500)","[500,2e+05)")) +
-  theme(plot.title = element_text(lineheight=1, face="bold")) 
+  theme(plot.title = element_text(lineheight=1, face="bold"))
+
+
+
 ```
 So split by class year, gender does not seem to be a significant factor, and in fact older women donate more than older men
 
@@ -237,3 +335,5 @@ ggplot(dt[FY16Giving>0],aes(factor(Class.Year),log10(FY16Giving))) +
   theme(plot.title = element_text(lineheight=1, face="bold")) 
 ```
 SO limiting it to just alumni who donated in 2016, we do see that even split by age, men donated more than women, except for the oldest alumni
+
+
