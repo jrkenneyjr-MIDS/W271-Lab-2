@@ -119,26 +119,28 @@ Each year, roughly half the alumni population do not give anything.  20-25%% giv
 
 ##Bivariate Analysis:  
 
-And do a scatterplot matrix
+###Giving in 2016 vs. 2015:  
+Let's look at how 2016 giving relates to 2015.  The plot shows that there is a reasonable correlation between the two (note the density of dots along the diagonal)
 
 ```{r}
 plot(jitter(as.numeric(FY16GivingCat),2)~jitter(as.numeric(FY15GivingCat),1.5),data=dt,pch=20)
 ```
 
-So there is strong correlation between giving in one year and another
+###Giving in 2016 vs. Alumni Event Attendance:  
 
 ```{r}
 ggplot(dt,aes(factor(AttendenceEvent),as.numeric(FY16GivingCat))) +
   geom_boxplot(aes(fill=factor(AttendenceEvent))) +
-  ggtitle("Giving Category by Attendence at Event") +
+  ggtitle("Giving Category by Attendance at Event") +
   geom_jitter() +
-  scale_x_discrete(name="Attendence",labels=c("No","Yes"))+
+  scale_x_discrete(name="Attendance",labels=c("No","Yes"))+
   scale_y_continuous(name="Giving Category",breaks=1:5,labels=c("[0,1)","[1,100)","[100,250)",
                                                                 "[250,500)","[500,2e+05)")) +
   theme(plot.title = element_text(lineheight=1, face="bold")) 
 ```
-So there does seem to be a relationship between giving in 2016 and attendence at the alumni event
-Try giving Category by marital status
+So there does seem to be a relationship between giving in 2016 and attendence at alumni events.
+
+###Giving in 2016 by  Marital status:  
 
 
 ```{r}
@@ -152,10 +154,12 @@ ggplot(dt,aes(factor(Marital.Status),as.numeric(FY16GivingCat))) +
   theme(plot.title = element_text(lineheight=1, face="bold")) 
 ```
 
+Most of the Alumni fall into either Married or Single category and it appears like Married Alumni are more likely to give than single.  
+There are very few data points for Widowed and Single alumni - so we do not want to make broad conclusions, but it appear that there are both single and Widowed Alumni that contribute high amounts (and there are those that contribute nothing too in these categories)
+One possible reason we are seeing this pattern (married giving more than single) might actually have to do with age.  Older Alumni are more likely to be married and older alumni are also probably a bit more well established financially - so more likely to contribute to charitable causes. So Marital status vs. Giving might simply be capturing the relationship between Age and Giving. While age is not a variable that's available in the dataset, we have "Class Year" which is a good proxy for age.  
 
-there are too few data points for divorced and widowed, but it does seem that married people donate more than single people
 
-On the other hand, the distriubtion seems more even for widowed and divorced- there are just as many widowed alumni who give large amounts as there are who give little to nothing. This implies that giving might be related to age. Married people, after all, tend to be older than single people. so Marital status might just be capuring the effect of age or class Year
+### Giving 2016 vs. Class Year:  
 
 ```{r}
 ggplot(dt,aes(factor(Class.Year),as.numeric(FY16GivingCat))) +
@@ -167,7 +171,8 @@ ggplot(dt,aes(factor(Class.Year),as.numeric(FY16GivingCat))) +
                                                                 "[250,500)","[500,2e+05)")) +
   theme(plot.title = element_text(lineheight=1, face="bold")) 
 ```
-Here, it indeed looks like the older the alumnus, the more likely he or she is to give money.Unfortunately, the boxplot by category misses a lot of data, so we can try to instead do a boxplot of the log of 2016 giving, minus the people who donated nothing
+Here, it indeed looks like the older the alumnus, the more likely he or she is to give money.Unfortunately, the boxplot by category misses a lot of data, so we can try to instead do a boxplot of the log of 2016 giving, minus the people who donated nothing.  
+
 ```{r}
 ggplot(dt[FY16Giving>0],aes(factor(Class.Year),log10(FY16Giving))) +
   geom_boxplot(aes(fill=factor(Class.Year))) +
@@ -178,10 +183,9 @@ ggplot(dt[FY16Giving>0],aes(factor(Class.Year),log10(FY16Giving))) +
   theme(plot.title = element_text(lineheight=1, face="bold")) 
 ```
 
-So for those who do donate, there seems to a clear trend that onlder alumni donate more
+So for those who do donate, there seems to a clear trend that older alumni donate more. 
 
-
-Is there a relationship in terms of gender?
+### Giving in 2016 by Gender:  
 
 ```{r}
 ggplot(dt,aes(Gender,as.numeric(FY16GivingCat))) +
@@ -193,7 +197,10 @@ ggplot(dt,aes(Gender,as.numeric(FY16GivingCat))) +
                                                                 "[250,500)","[500,2e+05)")) +
   theme(plot.title = element_text(lineheight=1, face="bold")) 
 ```
-It's a little hard to tell- since it does look like men donate a bit more to the university, but it's also possible that there are fewer female alumni (fewer women attended college in 1972)
+It's a little hard to tell- since it does look like men donate a bit more to the university, but it's also possible that there are fewer female alumni (fewer women attended college in 1972)  
+
+
+
 ```{r}
 ggplot(dt[FY16Giving>0],aes(Gender,log10(FY16Giving))) +
   geom_boxplot(aes(fill=Gender)) +
@@ -211,7 +218,7 @@ Try class year split by male and female:
 ```{r}
 ggplot(dt,aes(factor(Class.Year),as.numeric(FY16GivingCat))) +
   geom_boxplot(aes(fill=Gender)) +
-  ggtitle("Giving Category by Class Year") +
+  ggtitle("Giving by Gender For each Class Year") +
   geom_jitter() +
   scale_x_discrete(name="Class Year")+
   scale_y_continuous(name="Giving Category",breaks=1:5,labels=c("[0,1)","[1,100)","[100,250)",
