@@ -1,0 +1,17 @@
+---
+title: "Lab 02"
+author: "Alex Yang, John Kenney, Ram Balasubramanian"
+subtitle: "w271"
+date: "Oct 12, 2017"
+output: pdf_document
+fontsize: 11pt
+geometry: margin=0.75in
+---
+
+#SECTION - 4 FINAL REMARKS
+. Section 4: Final Remarks. After examining the data and using the data to build a predictive model,
+what are your departing thoughts? What are the strengths and weaknesses in your analysis? Should
+the administration trust your result? Are there subsample in your sample that your model did a bad
+job in predicting their contribution behavior? If so, why? Are there other "things", a wish list, that you
+think can be used to improve your model? If so, what are they? Perhaps you can make a suggestion to
+the administration to collect those information in the future.

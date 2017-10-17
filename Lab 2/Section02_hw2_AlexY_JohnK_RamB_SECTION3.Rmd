@@ -1,0 +1,69 @@
+---
+title: "Lab 02"
+author: "Alex Yang, John Kenney, Ram Balasubramanian"
+subtitle: "w271"
+date: "Oct 12, 2017"
+output: pdf_document
+fontsize: 11pt
+geometry: margin=0.75in
+---
+
+
+#SECTION - 3  STATISTICAL MODELING:
+Section 3: Statistical Modeling. Start the section summarizing the key results - what variables, if
+any, are the key predictors of the year 2016 contribution? What are the key techniques you have
+experimented? What method did you use in your final model? How did you choose the final model?
+What model performance criteria did you use to choose the final model? What statistical infernece did
+you perform? Explain them. Comment on statistical significance vs. economic significance.
+
+
+
+
+```{r}
+#model for determining whether someone will contribute or not
+
+#2016 giving status as function of 2015
+model.fit1a = glm(Giver16~(Giver15), data=dt, family = binomial(link="logit"))
+summary(model.fit1a)
+Anova(model.fit1a, test="LR")
+
+#2016 giving status as function of prior year giving status
+model.fit1b = glm(Giver16~(Giver15+ Giver14+Giver13+Giver12), data=dt, family = binomial(link="logit"))
+summary(model.fit1b)
+Anova(model.fit1b, test="LR")
+
+#2016 giving status as function of class year, marital status, attendance (not using prior year)
+model.fit1c = glm(Giver16~factor(Class.Year)+factor(Marital.Status)+AttendenceEvent , data=dt, family = binomial(link="logit"))
+summary(model.fit1c)
+Anova(model.fit1c, test="LR")
+
+#2016 giving status as function of giving status in 2015, class year, marital status, attendance 
+model.fit1d = glm(Giver16~Giver15+factor(Class.Year)+factor(Marital.Status)+AttendenceEvent , data=dt, family = binomial(link="logit"))
+summary(model.fit1d)
+Anova(model.fit1d, test="LR")
+
+#2016 giving status as function of ALL prior year giving statuses , class year, marital status, attendance 
+model.fit1e = glm(Giver16~Giver15+ Giver14+Giver13+Giver12+factor(Class.Year)+factor(Marital.Status)+AttendenceEvent , data=dt, family = binomial(link="logit"))
+summary(model.fit1e)
+Anova(model.fit1e, test="LR")
+
+```
+
+
+```{r}
+#models for determining category - using all data 2016giving category as function of 
+#2015 giving category 
+library(nnet)
+model.fit2a = multinom(FY16GivingCat~FY15GivingCat, data=dt)
+summary(model.fit2a)
+Anova(model.fit2a, test="LR")
+
+
+#2015 giving category 
+library(nnet)
+model.fit2b = multinom(FY16GivingCat~FY15GivingCat+FY14GivingCat+FY13GivingCat+FY12GivingCat, data=dt)
+summary(model.fit2b)
+Anova(model.fit2b, test="LR")
+
+
+```
