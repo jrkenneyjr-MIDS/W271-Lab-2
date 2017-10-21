@@ -11,7 +11,7 @@ geometry: margin=0.75in
 #SECTION - 1 INTRODUCTION & KEY RESULTS
 
 ##Problem Introduction:  
-We have been hired by a Private University to identify who among their Alumni are most likely to contribute towards the University's foundation in future years. The university has provided us with data on past contributions from graduates - data includes some demographic information (like gender, marital status),  university specific information (graduation year, major of studies), and some information on how "connected"" an Alumnus is to the school (Alumni event attendance, historical contributions).  
+We have been hired by a Private University to identify who among their Alumni are most likely to contribute towards the University's foundation in future years. The university has provided us with data on past contributions from graduates - data includes some demogracramerc information (like gender, marital status),  university specific information (graduation year, major of studies), and some information on how "connected"" an Alumnus is to the school (Alumni event attendance, historical contributions).  
 
 ##1.1 HIGH LEVEL DESCRIPTION OF MODELING APPROACH:  
 We have taken two approaches to the problem (named Beta-Hat and Y-Hat):  
@@ -45,6 +45,7 @@ library(package = MASS)  # Location of parcoord() function
 library(vcd)
 library(data.table)
 library(stargazer)
+library(caret) #Required for Confusion Matrix
 ```
 
 
@@ -52,6 +53,7 @@ library(stargazer)
 dt<-fread("lab2data.csv")
 describe(dt)
 ```
+#Insert Univariate EDA from 1st Revision
 
 ##2.1 Brief Description of Data Available:  
 We have data for 1000 past graduates of the University.  There are 12 variables provided for each Alumnus.  They are:
@@ -66,6 +68,8 @@ We have data for 1000 past graduates of the University.  There are 12 variables 
 
 
 We do not have any missing values in the data; and there do not seem to be an obvious "data cleaning" that needs to be conducted.  We will conduct an Exploratory Data Analysis next.  
+
+#What are the important variables we want to include in our discussion here?  What would we suppose would be meaningful?  What can we omit?
 
 ```{r}
 #View the contents of Major and Next Degree - to identify if there are any
@@ -104,6 +108,8 @@ dt$YearsGiven = dt$Giver12 + dt$Giver13+dt$Giver14 + dt$Giver15
 dt$NextDegCat = 1-as.integer((dt$Next.Degree=="NONE"))
 
 #Group majors by broad categories
+
+#I think we should consider grouping majors below a certain threshold as "Rare" vs. "Common".  How were these categories decided upon?
 
 dt$MajorCat = ifelse(dt$Major %in% c('American Studies','Art','Chinese','Classics','Comparative Literature','English','English-Journalism','French','German','History','Independent','Music','Philosophy','Philosophy-Religion','Physical Education','Religious Studies','Russian','Spanish','Speech (Drama, etc.)','Theatre'), "HUM_ART", ifelse(dt$Major %in% c('Biology','Chemistry','Computer Science','Engineering','General Science','General Science-Biology','General Science-Chemistry','General Science-Math','General Science-Physics','Mathematics','Mathematics-Physics','Physics','Zoology'
 ), "SCIENCE","OTHER"))
@@ -157,7 +163,9 @@ grid.arrange(h1,h2,ncol=2)
 Distribution on the left shows that there are many who contribute very small amounts.  So the distribution is still very skewed; so a log-transform might help us see the distribution better.
 
 Each year, roughly half the alumni population do not give anything.  20-25%% give less than \$100;  Around 14% Give \$100-250; About 4% give \$250-500 and less than 1% give more than $500.  In 2013, we had the highest percentage of the Alumni contributing (about 49%) and 2015 marked the lowest % giving (43%)
+#How do you know?  Where is the output of this?  
 
+#Where's the rest of the univariate analysis?
 
 ##2.2.2 Bivariate Analysis:  
 
@@ -171,13 +179,34 @@ plot(jitter(as.numeric(FY16GivingCat),2)~jitter(as.numeric(FY15GivingCat),1.5),d
 
 #Generic function to perform xtab on two variables and conduct LRT test of independence.
 
-GenXtab = function(dframe, x1,x2, nlist){
+#Let's comment on assocstats
+
+GenXtab = function(dframe, x1, x2, nlist){
   x1vsx2= xtabs(formula = ~x1+x2, data=dframe)
   names(dimnames(x1vsx2)) = nlist
   print(x1vsx2)
   print("Percentage of Column Totals Shown Below")
   print(round(prop.table(x1vsx2, 2),2))
-  assocstats(x1vsx2)
+  a.s = assocstats(x1vsx2)
+  a.s
+  if (is.null(a.s$phi))      {print("Phi: Not Applicable")}
+    else if(abs(a.s$phi)>0.5){print("Phi: Large Effect")}
+    else if(abs(a.s$phi)>0.3){print("Phi: Medium Effect")}
+    else if(abs(a.s$phi)>0.1){print("Phi: Small Effect")}
+    else                     {print("Phi: Negligible Effect")}
+  
+  if (is.null(a.s$contingency))      {print("Contingency Coef: Not Applicable")}
+    else if(abs(a.s$contingency)>0.5){print("Contingency Coef: Large Effect")}
+    else if(abs(a.s$contingency)>0.3){print("Contingency Coef: Medium Effect")}
+    else if(abs(a.s$contingency)>0.1){print("Contingency Coef: Small Effect")}
+    else                             {print("Contingency Coef: Negligible Effect")}
+  
+  if (is.null(a.s$cramer))      {print("Cramer's V: Not Applicable")}
+    else if(abs(a.s$cramer)>0.5){print("Cramer's V: Large Effect")}
+    else if(abs(a.s$cramer)>0.3){print("Cramer's V: Medium Effect")}
+    else if(abs(a.s$cramer)>0.1){print("Cramer's V: Small Effect")}
+    else                        {print("Cramer's V: Negligible Effect")}
+  
 }
 
 GenXtab(dt, dt$Giver16, dt$Giver15, c("FY16","FY15"))

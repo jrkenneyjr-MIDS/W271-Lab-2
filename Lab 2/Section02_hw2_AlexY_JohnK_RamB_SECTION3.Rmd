@@ -20,50 +20,104 @@ you perform? Explain them. Comment on statistical significance vs. economic sign
 
 
 ```{r}
-#model for determining whether someone will contribute or not
+
+PredAcc = function(dt, mod, per.tr = 0.75, seed = 1, use.seed = TRUE){
+  #Function to separate data into train and test sets, predict dep var, 
+  #and evaluate accuracy of model
+    #data: a data frame or table
+    #per.tr: percentage of data to be in training set. Domain = [0,1]
+    #mod: model fit on data
+    #seed: value to set repeatable random sampling
+  
+  #For Debugging
+    #dt = dt
+    #per.tr = .75
+    #mod = model.fit2a
+    #seed = 1
+    #use.seed = TRUE
+  
+  #Create the Test and Train Sets
+  if (use.seed){set.seed(seed)} #For repeatable sampling 
+  nall = nrow(dt) #Total number of observations
+  ntrain = floor(per.tr * nall) #Number of observations for training set
+  ntest = floor((1-per.tr)* nall) #Number of observations for testing set
+  index = seq(1:nall) #Indices to sample from
+  trainIndex = sample(index, ntrain) #Random set of training indices
+  testIndex = index[-trainIndex]  #Remaining set of test indices
+  train = dt[trainIndex,]  #Random sample of 'dt' for train set
+  test = dt[testIndex,]   #Remaining sample for test set
+  
+  #Predict the responses given model
+  
+  dep = names(mod$model[1])  #Name of Dependent Variable
+  test.act = test[, ..dep]   #List of Actual Observed Outcomes
+  if (class(mod)[1] == "glm"){
+    test.prob = predict(mod, newdata = test, type = "response") #Probability Binary is True
+    test.pred = ifelse(test.prob>0.5, 1, 0)       #Predicted Result
+  }else if (class(mod)[1] == "multinom"){
+    test.prob = predict(mod, newdata = test, type = 'probs')  #Probability of each category
+    test.pred = colnames(test.prob)[max.col(test.prob, ties.method = "random")]  #Category of highest probability
+  }
+  
+  results = data.frame(pred = test.pred, act = test.act)
+  #If we decide not to use Confusion Matrix...
+  #accuracy = round(mean(test.act == test.pred),3)  #Part of confusionMatrix             
+  #GenXtab(dframe = results, x1 = results[,1], x2 = results[,2], nlist = c("Predicted","Actual"))                       
+  #paste("Overall Prediction Accuracy = ", accuracy)
+  
+  caret::confusionMatrix(results[,1],results[,2], positive = '1') #Analysis of Prediction Accuracy Stats
+}
+
+#models for determining whether someone will contribute or not
 
 #2016 giving status as function of 2015
-model.fit1a = glm(Giver16~(Giver15), data=dt, family = binomial(link="logit"))
+model.fit1a = glm(Giver16~(Giver15), data=train, family = binomial(link="logit"))
 summary(model.fit1a)
 Anova(model.fit1a, test="LR")
+PredAcc(dt = dt, mod = model.fit1a)
 
 #2016 giving status as function of prior year giving status
 model.fit1b = glm(Giver16~(Giver15+ Giver14+Giver13+Giver12), data=dt, family = binomial(link="logit"))
 summary(model.fit1b)
 Anova(model.fit1b, test="LR")
+PredAcc(dt = dt, mod = model.fit1b)
 
 #2016 giving status as function of class year, marital status, attendance (not using prior year)
 model.fit1c = glm(Giver16~factor(Class.Year)+factor(Marital.Status)+AttendenceEvent , data=dt, family = binomial(link="logit"))
 summary(model.fit1c)
 Anova(model.fit1c, test="LR")
+PredAcc(dt = dt, mod = model.fit1c)
 
 #2016 giving status as function of giving status in 2015, class year, marital status, attendance 
 model.fit1d = glm(Giver16~Giver15+factor(Class.Year)+factor(Marital.Status)+AttendenceEvent , data=dt, family = binomial(link="logit"))
 summary(model.fit1d)
 Anova(model.fit1d, test="LR")
+PredAcc(dt = dt, mod = model.fit1d)
 
 #2016 giving status as function of ALL prior year giving statuses , class year, marital status, attendance 
 model.fit1e = glm(Giver16~Giver15+ Giver14+Giver13+Giver12+factor(Class.Year)+factor(Marital.Status)+AttendenceEvent , data=dt, family = binomial(link="logit"))
 summary(model.fit1e)
 Anova(model.fit1e, test="LR")
-
+PredAcc(dt = dt, mod = model.fit1e)
 ```
 
 
 ```{r}
 #models for determining category - using all data 2016giving category as function of 
 #2015 giving category 
+
+
 library(nnet)
-model.fit2a = multinom(FY16GivingCat~FY15GivingCat, data=dt)
+model.fit2a = multinom(FY16GivingCat~FY15GivingCat, data=dt, model = TRUE)
 summary(model.fit2a)
 Anova(model.fit2a, test="LR")
-
+PredAcc(dt = dt, mod = model.fit2a)
 
 #2015 giving category 
 library(nnet)
-model.fit2b = multinom(FY16GivingCat~FY15GivingCat+FY14GivingCat+FY13GivingCat+FY12GivingCat, data=dt)
+model.fit2b = multinom(FY16GivingCat~FY15GivingCat+FY14GivingCat+FY13GivingCat+FY12GivingCat, data=dt, model = TRUE)
 summary(model.fit2b)
 Anova(model.fit2b, test="LR")
-
+PredAcc(dt = dt, mod = model.fit2b)
 
 ```
