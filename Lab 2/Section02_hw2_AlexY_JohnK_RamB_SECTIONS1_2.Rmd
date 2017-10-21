@@ -189,7 +189,7 @@ GenXtab = function(dframe, x1, x2, nlist){
   print(round(prop.table(x1vsx2, 2),2))
   a.s = assocstats(x1vsx2)
   a.s
-  if (is.null(a.s$phi))      {print("Phi: Not Applicable")}
+  if (is.null(a.s$phi) | is.na(a.s$phi))      {print("Phi: Not Applicable")}
     else if(abs(a.s$phi)>0.5){print("Phi: Large Effect")}
     else if(abs(a.s$phi)>0.3){print("Phi: Medium Effect")}
     else if(abs(a.s$phi)>0.1){print("Phi: Small Effect")}
@@ -377,4 +377,6 @@ ggplot(dt[FY16Giving>0],aes(factor(Class.Year),log10(FY16Giving))) +
 ```
 SO limiting it to just alumni who donated in 2016, we do see that even split by age, men donated more than women, except for the oldest alumni
 
-
+```{r}
+save(dt, file="dt_dataframe.Rda")
+```
