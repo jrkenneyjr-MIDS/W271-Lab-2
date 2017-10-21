@@ -10,52 +10,73 @@ geometry: margin=0.75in
 
 
 #SECTION - 3  STATISTICAL MODELING:
-Section 3: Statistical Modeling. Start the section summarizing the key results - what variables, if
-any, are the key predictors of the year 2016 contribution? What are the key techniques you have
+Section 3: Statistical Modeling. Start the section summarizing the key results - what variables, if any, are the key predictors of the year 2016 contribution? What are the key techniques you have
 experimented? What method did you use in your final model? How did you choose the final model?
 What model performance criteria did you use to choose the final model? What statistical infernece did
 you perform? Explain them. Comment on statistical significance vs. economic significance.
+
+```{r message=FALSE, warning=FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+#Libraries required 
+library(car)
+library(dplyr)
+library(Hmisc)#Used by author for 3D plotting
+library(ggplot2)
+library(gridExtra)
+library(effsize) #Used to calculate Cohen's D for T-Test
+library(aod)    #Used for effect size of the logit model
+library(mcprofile) #Used for confidence intervals
+library(package = MASS)  # Location of parcoord() function
+library(vcd)
+library(data.table)
+library(stargazer)
+library(nnet)
+library(ordinal)
+library(caret)
+
+#can delete this line below if dataset is already in workspace
+#otherwise, run SECTION1.Rmd file (need this process of storing the data frame and
+#loading it again if we knit the SECTION files separately)
+
+load("dt_dataframe.Rda")
+
+```
+
+
+```{r}
+set.seed(1234)
+train_index = createDataPartition(dt$FY16GivingCat, p=0.8, list=FALSE, times=1)
+dt_train = dt[train_index]
+dt_test = dt[-train_index]
+
+
+xtabs(~FY16GivingCat, data=dt_train)
+xtabs(~FY16GivingCat, data=dt_test)
+round(prop.table(xtabs(~FY16GivingCat, data=dt_train)),2)
+round(prop.table(xtabs(~FY16GivingCat, data=dt_test)),2)
+
+```
 
 
 
 
 ```{r}
 
-PredAcc = function(dt, mod, per.tr = 0.75, seed = 1, use.seed = TRUE){
-  #Function to separate data into train and test sets, predict dep var, 
-  #and evaluate accuracy of model
-    #data: a data frame or table
-    #per.tr: percentage of data to be in training set. Domain = [0,1]
+PredAcc = function(data_test, mod){
+  #Function to  evaluate accuracy of model
+    #data_test: a data frame or table thatcontains test data
     #mod: model fit on data
-    #seed: value to set repeatable random sampling
-  
-  #For Debugging
-    #dt = dt
-    #per.tr = .75
-    #mod = model.fit2a
-    #seed = 1
-    #use.seed = TRUE
-  
-  #Create the Test and Train Sets
-  if (use.seed){set.seed(seed)} #For repeatable sampling 
-  nall = nrow(dt) #Total number of observations
-  ntrain = floor(per.tr * nall) #Number of observations for training set
-  ntest = floor((1-per.tr)* nall) #Number of observations for testing set
-  index = seq(1:nall) #Indices to sample from
-  trainIndex = sample(index, ntrain) #Random set of training indices
-  testIndex = index[-trainIndex]  #Remaining set of test indices
-  train = dt[trainIndex,]  #Random sample of 'dt' for train set
-  test = dt[testIndex,]   #Remaining sample for test set
-  
+
   #Predict the responses given model
   
   dep = names(mod$model[1])  #Name of Dependent Variable
-  test.act = test[, ..dep]   #List of Actual Observed Outcomes
+  test.act = data_test[, ..dep]   #List of Actual Observed Outcomes
   if (class(mod)[1] == "glm"){
-    test.prob = predict(mod, newdata = test, type = "response") #Probability Binary is True
+    test.prob = predict(mod, newdata = data_test, type = "response") #Probability Binary is True
     test.pred = ifelse(test.prob>0.5, 1, 0)       #Predicted Result
   }else if (class(mod)[1] == "multinom"){
-    test.prob = predict(mod, newdata = test, type = 'probs')  #Probability of each category
+    test.prob = predict(mod, newdata = data_test, type = 'probs')  #Probability of each category
     test.pred = colnames(test.prob)[max.col(test.prob, ties.method = "random")]  #Category of highest probability
   }
   
@@ -65,59 +86,125 @@ PredAcc = function(dt, mod, per.tr = 0.75, seed = 1, use.seed = TRUE){
   #GenXtab(dframe = results, x1 = results[,1], x2 = results[,2], nlist = c("Predicted","Actual"))                       
   #paste("Overall Prediction Accuracy = ", accuracy)
   
-  caret::confusionMatrix(results[,1],results[,2], positive = '1') #Analysis of Prediction Accuracy Stats
+  confusionMatrix(results[,1],results[,2], positive = '1') #Analysis of Prediction Accuracy Stats
+}
+
+Accuracy= function(CM_train, CM_test, model_name){
+  #Returns  row with accuracy value for test and train sets for the model
+  round(data.frame(row.names = model_name, TrainAcc = CM_train$overall[1], TestAcc = CM_test$overall[1]),2)
+  
 }
 
 #models for determining whether someone will contribute or not
 
+```
+
+
+
+```{r}
 #2016 giving status as function of 2015
-model.fit1a = glm(Giver16~(Giver15), data=train, family = binomial(link="logit"))
+model.fit1a = glm(Giver16~(Giver15), data=dt_train, family = binomial(link="logit"))
 summary(model.fit1a)
 Anova(model.fit1a, test="LR")
-PredAcc(dt = dt, mod = model.fit1a)
+CMTr = PredAcc(dt_train, mod=model.fit1a)
+CMTe = PredAcc(dt_test, mod=model.fit1a)
+#initialize ac table for the first use later use rbind to add to the dataframe
+ac_table_1 = Accuracy(CMTr, CMTe, "model.fit1a")
 
 #2016 giving status as function of prior year giving status
-model.fit1b = glm(Giver16~(Giver15+ Giver14+Giver13+Giver12), data=dt, family = binomial(link="logit"))
+model.fit1b = glm(Giver16~(Giver15+ Giver14+Giver13+Giver12), data=dt_train, family = binomial(link="logit"))
 summary(model.fit1b)
 Anova(model.fit1b, test="LR")
-PredAcc(dt = dt, mod = model.fit1b)
+CMTr = PredAcc(dt_train, mod=model.fit1b)
+CMTe = PredAcc(dt_test, mod=model.fit1b)
+ac_table_1 = rbind(ac_table_1, Accuracy(CMTr, CMTe, "model.fit1b"))
 
 #2016 giving status as function of class year, marital status, attendance (not using prior year)
-model.fit1c = glm(Giver16~factor(Class.Year)+factor(Marital.Status)+AttendenceEvent , data=dt, family = binomial(link="logit"))
+model.fit1c = glm(Giver16~factor(Class.Year)+factor(Marital.Status)+AttendenceEvent , data=dt_train, family = binomial(link="logit"))
 summary(model.fit1c)
 Anova(model.fit1c, test="LR")
-PredAcc(dt = dt, mod = model.fit1c)
+CMTr = PredAcc(dt_train, mod=model.fit1c)
+CMTe = PredAcc(dt_test, mod=model.fit1c)
+ac_table_1 = rbind(ac_table_1, Accuracy(CMTr, CMTe, "model.fit1c"))
 
-#2016 giving status as function of giving status in 2015, class year, marital status, attendance 
-model.fit1d = glm(Giver16~Giver15+factor(Class.Year)+factor(Marital.Status)+AttendenceEvent , data=dt, family = binomial(link="logit"))
+
+model.fit1d = glm(Giver16~Giver15+factor(Class.Year)+factor(Marital.Status)+AttendenceEvent , data=dt_train, family = binomial(link="logit"))
 summary(model.fit1d)
 Anova(model.fit1d, test="LR")
-PredAcc(dt = dt, mod = model.fit1d)
+CMTr = PredAcc(dt_train, mod=model.fit1d)
+CMTe = PredAcc(dt_test, mod=model.fit1d)
+ac_table_1 = rbind(ac_table_1, Accuracy(CMTr, CMTe, "model.fit1d"))
+
 
 #2016 giving status as function of ALL prior year giving statuses , class year, marital status, attendance 
-model.fit1e = glm(Giver16~Giver15+ Giver14+Giver13+Giver12+factor(Class.Year)+factor(Marital.Status)+AttendenceEvent , data=dt, family = binomial(link="logit"))
+model.fit1e = glm(Giver16~Giver15+ Giver14+Giver13+Giver12+factor(Class.Year)+factor(Marital.Status)+AttendenceEvent , data=dt_train, family = binomial(link="logit"))
 summary(model.fit1e)
 Anova(model.fit1e, test="LR")
-PredAcc(dt = dt, mod = model.fit1e)
+CMTr = PredAcc(dt_train, mod=model.fit1e)
+CMTe = PredAcc(dt_test, mod=model.fit1e)
+ac_table_1 = rbind(ac_table_1, Accuracy(CMTr, CMTe, "model.fit1e"))
+```
+
+
+
+```{r}
+#models for determining category - using 2016giving category as function of 
+#2015 giving category 
+
+library(nnet)
+model.fit2a = multinom(FY16GivingCat~FY15GivingCat, data=dt_train, model = TRUE)
+summary(model.fit2a)
+Anova(model.fit2a, test="LR")
+
+CMTr = PredAcc(dt_train, mod=model.fit2a)
+CMTe = PredAcc(dt_test, mod=model.fit2a)
+ac_table_2 = Accuracy(CMTr, CMTe, "model.fit2a")
+
+
+#2015 giving category 
+library(nnet)
+
+model.fit2b = multinom(FY16GivingCat~FY15GivingCat+FY14GivingCat+FY13GivingCat+FY12GivingCat, data=dt_train, model = TRUE)
+
+summary(model.fit2b)
+Anova(model.fit2b, test="LR")
+CMTr = PredAcc(dt_train, mod=model.fit2b)
+CMTe = PredAcc(dt_test, mod=model.fit2b)
+ac_table_2 = rbind(ac_table_2, Accuracy(CMTr, CMTe, "model.fit2b"))
+
 ```
 
 
 ```{r}
-#models for determining category - using all data 2016giving category as function of 
-#2015 giving category 
+#RB's models
+rb.fit_kitchensink = multinom(FY16GivingCat~FY15GivingCat+FY14GivingCat+FY13GivingCat+FY12GivingCat+NextDegCat+AttendenceEvent+ClassYearCat+Gender+MajorCat, data=dt_train, model=TRUE)
+summary(rb.fit_kitchensink)
+Anova(rb.fit_kitchensink, test="LR")
+CMTr = PredAcc(dt_train, mod=rb.fit_kitchensink)
+CMTe = PredAcc(dt_test, mod=rb.fit_kitchensink)
+ac_table_2 = rbind(ac_table_2, Accuracy(CMTr, CMTe, "rb.fit_kitchensink"))
 
 
-library(nnet)
-model.fit2a = multinom(FY16GivingCat~FY15GivingCat, data=dt, model = TRUE)
-summary(model.fit2a)
-Anova(model.fit2a, test="LR")
-PredAcc(dt = dt, mod = model.fit2a)
+#Let's simplify this model - substituting yearsgiven instead of each year's category
+rb.fit1b = multinom(FY16GivingCat~FY15GivingCat+YearsGiven+NextDegCat+AttendenceEvent+Gender, data=dt_train, model=TRUE)
+summary(rb.fit1b)
+Anova(rb.fit1b, test="LR")
+CMTr = PredAcc(dt_train, mod=rb.fit1b)
+CMTe = PredAcc(dt_test, mod=rb.fit1b)
+ac_table_2 = rbind(ac_table_2, Accuracy(CMTr, CMTe, "rb.fit1b"))
 
-#2015 giving category 
-library(nnet)
-model.fit2b = multinom(FY16GivingCat~FY15GivingCat+FY14GivingCat+FY13GivingCat+FY12GivingCat, data=dt, model = TRUE)
-summary(model.fit2b)
-Anova(model.fit2b, test="LR")
-PredAcc(dt = dt, mod = model.fit2b)
+```
+
+```{r}
+
+#Below are the class of models without using prior year giving info
+rb.fit3a = multinom(FY16GivingCat~NextDegCat+AttendenceEvent+Gender+ClassYearCat, data=dt_train, model=TRUE)
+
+summary(rb.fit3a)
+confint(rb.fit3a)
+Anova(rb.fit1b, test="LR")
+CMTr = PredAcc(dt_train, mod=rb.fit3a)
+CMTe = PredAcc(dt_test, mod=rb.fit3a)
+ac_table_3 =  Accuracy(CMTr, CMTe, "rb.fit3a")
 
 ```
