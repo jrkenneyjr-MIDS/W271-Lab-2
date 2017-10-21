@@ -114,7 +114,8 @@ dt$NextDegCat = 1-as.integer((dt$Next.Degree=="NONE"))
 dt$MajorCat = ifelse(dt$Major %in% c('American Studies','Art','Chinese','Classics','Comparative Literature','English','English-Journalism','French','German','History','Independent','Music','Philosophy','Philosophy-Religion','Physical Education','Religious Studies','Russian','Spanish','Speech (Drama, etc.)','Theatre'), "HUM_ART", ifelse(dt$Major %in% c('Biology','Chemistry','Computer Science','Engineering','General Science','General Science-Biology','General Science-Chemistry','General Science-Math','General Science-Physics','Mathematics','Mathematics-Physics','Physics','Zoology'
 ), "SCIENCE","OTHER"))
 
-
+dt$MaritalStatusCat = factor(dt$Marital.Status)
+dt$ClassYearCat = factor(dt$Class.Year)
 ```
 
 
