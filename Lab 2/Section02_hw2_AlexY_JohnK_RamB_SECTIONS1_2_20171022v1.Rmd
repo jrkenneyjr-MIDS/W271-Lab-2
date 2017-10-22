@@ -402,5 +402,16 @@ ggplot(dt[FY16Giving>0],aes(factor(Class.Year),log10(FY16Giving))) +
 SO limiting it to just alumni who donated in 2016, we do see that even split by age, men donated more than women, except for the oldest alumni
 
 ```{r}
+
+#Correlation with past giving for those who gave in 2016
+
+cor(dt[dt$FY16Giving>0]$FY16Giving, dt[dt$FY16Giving>0]$FY15Giving)
+cor(dt[dt$FY16Giving>0]$FY16Giving, dt[dt$FY16Giving>0]$FY14Giving)
+cor(dt[dt$FY16Giving>0]$FY16Giving, dt[dt$FY16Giving>0]$FY13Giving)
+cor(dt[dt$FY16Giving>0]$FY16Giving, dt[dt$FY16Giving>0]$FY12Giving)
+
+```
+
+```{r}
 save(dt, file="dt_dataframe.Rda")
 ```
