@@ -53,7 +53,7 @@ library(caret) #Required for Confusion Matrix
 dt<-fread("lab2data.csv")
 describe(dt)
 ```
-#Insert Univariate EDA from 1st Revision
+
 
 ##2.1 Brief Description of Data Available:  
 We have data for 1000 past graduates of the University.  There are 12 variables provided for each Alumnus.  They are:
@@ -76,7 +76,7 @@ We do not have any missing values in the data; and there do not seem to be an ob
 #obvious groupings
 majortable= as.data.frame(round(prop.table(table(dt$Major)),2))
 degtable= as.data.frame(round(prop.table(table(dt$Next.Degree)),2))
-
+#describe(dt$MajorCat)
 ```
 
 ##1.3 Create new variables:  
@@ -112,11 +112,20 @@ dt$NextDegCat = 1-as.integer((dt$Next.Degree=="NONE"))
 #I think we should consider grouping majors below a certain threshold as "Rare" vs. "Common".  How were these categories decided upon?
 
 #AY-I think we should consider spliting "science" into "STEM" and "social Science"
+#dt$MajorCat = ifelse(dt$Major %in% c('American Studies','Art','Chinese','Classics','Comparative #Literature','English','English-Journalism','French','German','History','Independent','Music','Philosophy','Philosophy-Religion','Physi#cal Education','Religious Studies','Russian','Spanish','Speech (Drama, etc.)','Theatre'), "HUM_ART", ifelse(dt$Major %in% #c('Biology','Chemistry','Computer Science','Engineering','General Science','General Science-Biology','General #Science-Chemistry','General Science-Math','General Science-Physics','Mathematics','Mathematics-Physics','Physics','Zoology'
+#), "SCIENCE","OTHER"))
+
+#Alternative Grouping:
 dt$MajorCat = ifelse(dt$Major %in% c('American Studies','Art','Chinese','Classics','Comparative Literature','English','English-Journalism','French','German','History','Independent','Music','Philosophy','Philosophy-Religion','Physical Education','Religious Studies','Russian','Spanish','Speech (Drama, etc.)','Theatre'), "HUM_ART", ifelse(dt$Major %in% c('Biology','Chemistry','Computer Science','Engineering','General Science','General Science-Biology','General Science-Chemistry','General Science-Math','General Science-Physics','Mathematics','Mathematics-Physics','Physics','Zoology'
-), "SCIENCE","OTHER"))
+), "STEM",ifelse(dt$Major %in% c("Economics","Economics-Regional Stds.","Sociology","Pyschology","Pol. Sci.-Regional Stds.","Sociology-Anthropology","Political Science","Anthropology","Economics-Business"), "SOCIAL_SCIENCE","OTHER")))
+
+# Maybe get rid of the "Professional" category. Not sure there's that much m=similarity between journalism and business majors
+
 
 dt$MaritalStatusCat = factor(dt$Marital.Status)
 dt$ClassYearCat = factor(dt$Class.Year)
+
+
 ```
 
 
@@ -127,47 +136,37 @@ Let's examine each variable first starting with the "variable of interest" - 201
 
 FY16Giving: Given that the vast majority of people did not give in 2016 and the skewness of the data (with a few large contributions) - let's also look at the distribution after a log-transformation (this is something we may want to consider for our modeling purposes)  
 
+
+  Let's do a log-transformation to see the distribution more clearly (note: 0 contributions are excluded in the log-transformed plot). The log-transformed distribution looks somewhat normal - with a few contributions in the tens of thousands of dollars.  
+
+Let's look at a distribution of just the "givers" (i.e. take out the zero contributions) to get a better picture.  
+
 ```{r}
 
 h1 = ggplot(data=dt,aes(x=FY16Giving)) +
   geom_histogram(bins=20) +
   ggtitle("Dist. of 2016 Contributions \n All Only $ Scale") + 
   theme(plot.title = element_text(lineheight=1))
-h2 = ggplot(data=dt,aes(x=log10(FY16Giving))) +
-  geom_histogram(bins=20) +
-  ggtitle("Dist. of 2016 Contributions\n All - Log10 $ Scale") +
-  xlab("Log10 Contributions")
-  theme(plot.title = element_text(lineheight=1, face="bold"))
-  
-grid.arrange(h1,h2,ncol=2)
 
-```
-
-Most of the alumni contributed \$0; so we see a big spike at 0 and then it tapers off quickly.  Let's do a log-transformation to see the distribution more clearly (note: 0 contributions are excluded in the log-transformed plot). The log-transformed distribution looks somewhat normal - with a few contributions in the tens of thousands of dollars.  
-
-Let's look at a distribution of just the "givers" (i.e. take out the zero contributions) to get a better picture.  
-
-```{r}
-
-h1 = ggplot(data=dt[FY16Giving>0],aes(x=FY16Giving)) +
+h2 = ggplot(data=dt[FY16Giving>0],aes(x=FY16Giving)) +
   geom_histogram(bins=20) +
   ggtitle("Dist. of 2016 Contributions \nGivers Only $ Scale") + 
   theme(plot.title = element_text(lineheight=1))
-h2 = ggplot(data=dt[FY16Giving>0],aes(x=log10(FY16Giving))) +
+h3 = ggplot(data=dt[FY16Giving>0],aes(x=log10(FY16Giving))) +
   geom_histogram(bins=20) +
   ggtitle("Dist. of 2016 Contributions\nGivers Only - Log10 $ Scale") +
   xlab("Log10 Contributions")
   theme(plot.title = element_text(lineheight=1, face="bold"))
   
-grid.arrange(h1,h2,ncol=2)
+grid.arrange(h1,h2,h3,ncol=3)
 
 ```
-Distribution on the left shows that there are many who contribute very small amounts.  So the distribution is still very skewed; so a log-transform might help us see the distribution better.
+Most of the alumni contributed \$0; so we see a big spike at 0 and then it tapers off quickly. When we filter for alumni who donated more than 0, we again see a very similar pattern-most alumni who did contribute contributed very little.  The distribution is still very skewed;a log-transform might help us see the distribution better.
 
-Each year, roughly half the alumni population do not give anything.  20-25%% give less than \$100;  Around 14% Give \$100-250; About 4% give \$250-500 and less than 1% give more than $500.  In 2013, we had the highest percentage of the Alumni contributing (about 49%) and 2015 marked the lowest % giving (43%)
-#How do you know?  Where is the output of this?  
+The alumni donations for 2012 through 2016 all have similar 5th, 10th, 25th, 50th, 75th, 90th, and 95th percentiles and have distributions similar to that of 2016. Each year, roughly half the alumni population do not give anything.  20-25%% give less than \$100;  Around 14% Give \$100-250; About 4% give \$250-500 and less than 1% give more than $500.  In 2013, we had the highest percentage of the Alumni contributing (about 49%) and 2015 marked the lowest % giving (43%)
+#How do you know?  Where is the output of this?  -Should we put a bunch of small histograms of the other years' giving, or can we just point to the previous out of the 
 
-#Where's the rest of the univariate analysis?
+#Where's the rest of the univariate analysis? - Is there much else to do? All the rest are category or binary variables, and are described clearly bt the "describe" function
 
 ##2.2.2 Bivariate Analysis:  
 
@@ -233,6 +232,7 @@ GenXtab(dt, dt$Giver16, dt$NextDegCat, c("FY16","NextDegCat"))
 GenXtab(dt, dt$FY16GivingCat, dt$NextDegCat, c("FY16","NextDegCat"))
 
 ```
+> *Do the xtabs take up too much space?*
 
 ###Giving in 2016 vs. Alumni Event Attendance:  
 
@@ -328,7 +328,8 @@ GenXtab(dt, dt$FY16GivingCat, dt$Gender, c("FY16", "Gender"))
 
 
 ```
-There is no statistical evidence that whether or not Alumni Give in 2016 varies by Gender (41% of Females Gave vs. 42% of Males). However when we look at the categories of contribution in 2016 by Gender, we see differences that cause us to reject the hypothesis that Gender and Giving Category in 2016 are independent. There may be other factors at play here, for e.g. we know that older alumni tend to give more than younger alumni; it is possible that there are fewer "older" female alumni (fewer women attended college in 1972) than Male. 
+There is no statistical evidence that whether or not Alumni Give in 2016 varies by Gender (41% of Females Gave vs. 42% of Males). However when we look at the categories of contribution in 2016 by Gender, we see differences worth investigating later. There may be other factors at play here, for e.g. we know that older alumni tend to give more than younger alumni; it is possible that there are fewer "older" female alumni (fewer women attended college in 1972) than Male. 
+> *AY Note: Not sure we should be rejecting hypothesis in the EDA stage*
 
 
 ```{r}

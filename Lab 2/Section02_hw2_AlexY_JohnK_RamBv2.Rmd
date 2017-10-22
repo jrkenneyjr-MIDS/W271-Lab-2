@@ -11,7 +11,7 @@ geometry: margin=0.75in
 #SECTION - 1 INTRODUCTION & KEY RESULTS
 
 ##Problem Introduction:  
-We have been hired by a Private University to identify who among their Alumni are most likely to contribute towards the University's foundation in future years. The university has provided us with data on past contributions from graduates - data includes some demogracramerc information (like gender, marital status),  university specific information (graduation year, major of studies), and some information on how "connected"" an Alumnus is to the school (Alumni event attendance, historical contributions).  
+We have been hired by a Private University to identify who among their Alumni are most likely to contribute towards the University's foundation in future years. The university has provided us with data on past contributions from graduates - data includes some demographic information (like gender, marital status),  university specific information (graduation year, major of studies), and some information on how "connected"" an Alumnus is to the school (Alumni event attendance, historical contributions).  
 
 ##1.1 HIGH LEVEL DESCRIPTION OF MODELING APPROACH:  
 We have taken two approaches to the problem (named Beta-Hat and Y-Hat):  
@@ -28,7 +28,7 @@ We will complete this section once we are done with the modeling work.
 #SECTION 2 - DATA EXAMINATION AND EDA:
 
 
-```{r message=FALSE, warning=FALSE}
+```{r}
 library(knitr)
 opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
 
@@ -41,19 +41,22 @@ library(gridExtra)
 library(effsize) #Used to calculate Cohen's D for T-Test
 library(aod)    #Used for effect size of the logit model
 library(mcprofile) #Used for confidence intervals
+
 library(package = MASS)  # Location of parcoord() function
 library(vcd)
+
+
 library(data.table)
-library(stargazer)
-library(caret) #Required for Confusion Matrix
 ```
 
 
 ```{r}
 dt<-fread("lab2data.csv")
 describe(dt)
+majortable= as.data.frame(round(prop.table(table(dt$Major)),2))
+degtable= as.data.frame(round(prop.table(table(dt$Next.Degree)),2))
+
 ```
-#Insert Univariate EDA from 1st Revision
 
 ##2.1 Brief Description of Data Available:  
 We have data for 1000 past graduates of the University.  There are 12 variables provided for each Alumnus.  They are:
@@ -69,24 +72,67 @@ We have data for 1000 past graduates of the University.  There are 12 variables 
 
 We do not have any missing values in the data; and there do not seem to be an obvious "data cleaning" that needs to be conducted.  We will conduct an Exploratory Data Analysis next.  
 
-#What are the important variables we want to include in our discussion here?  What would we suppose would be meaningful?  What can we omit?
+##2.2 Exploratory Data Analysis:  
+
+##2.2.1 Univariate Analysis:  
+Let's examine each variable first starting with the "variable of interest" - 2016 contributions.
+
+FY16Giving: Given that the vast majority of people did not give in 2016 and the skewness of the data (with a few large contributions) - let's also look at the distribution after a log-transformation (this is something we may want to consider for our modeling purposes)  
+
+
 
 ```{r}
-#View the contents of Major and Next Degree - to identify if there are any
-#obvious groupings
-majortable= as.data.frame(round(prop.table(table(dt$Major)),2))
-degtable= as.data.frame(round(prop.table(table(dt$Next.Degree)),2))
+
+
+
+#h2 = ggplot(data=dt,aes(x=log10(FY16Giving))) +
+#  geom_histogram(bins=20) +
+#  ggtitle("Dist. of 2016 Contributions\n All - Log10 $ Scale") +
+#  xlab("Log10 Contributions")
+#  theme(plot.title = element_text(lineheight=1, face="bold"))
+  
+#grid.arrange(h1,h2,ncol=2)
+
+#AYANG Not- The log10 plot here and below are the exact same- it outmatically filters out all the entries where giving=0 since log(0)=undefined
+```
+
+
+```{r}
+
+h1= ggplot(data=dt,aes(x=FY16Giving)) +
+  geom_histogram(bins=20) +
+  ggtitle("Dist. of 2016 Contributions \n All Only $ Scale") + 
+  theme(plot.title = element_text(lineheight=1))
+h2 = ggplot(data=dt[FY16Giving>0],aes(x=FY16Giving)) +
+  geom_histogram(bins=20) +
+  ggtitle("Dist. of 2016 Contributions \nGivers Only $ Scale") + 
+  theme(plot.title = element_text(lineheight=1))
+h3 = ggplot(data=dt[FY16Giving>0],aes(x=log10(FY16Giving))) +
+  geom_histogram(bins=20) +
+  ggtitle("Dist. of 2016 Contributions\nGivers Only - Log10 $ Scale") +
+  xlab("Log10 Contributions")
+  theme(plot.title = element_text(lineheight=1, face="bold"))
+  
+grid.arrange(h1,h2, h3,ncol=3)
 
 ```
 
-##1.3 Create new variables:  
 
-Let's group the yearly contributions by the categories that the university is interested in; Classify the "next degree" variable into 0 (representing "none") and 1 (representing there was some next-degree).  Create indicator variables for each year for giver(1) or not a giver(0).  For each alumnus let's also count the number of years they have given between 2012 and 2015.  
+The first chart shows that most of the alumni contributed \$0; so we see a big spike at 0 and then it tapers off quickly.  Let's do a log-transformation to see the distribution more clearly.
+Looking at a distribution of just the "givers" (i.e. take out the zero contributions) shows that there are many who contribute very small amounts.  So the distribution is still very skewed; 
+The log-transform shows something closer to normality
 
+Let's group the 2016 contributions by the categories that the university is interested in. 
 
 ```{r}
 dt$FY16GivingCat<-cut(dt$FY16Giving,c(0,1,100,250,500,200000),right=FALSE)
-describe(dt$FY16GivingCat)
+#summary(dt$FY16GivingCat)
+describe(dt$FY12GivingCat)
+```
+
+Let's do it for other years as well to see how the distributions look.
+
+```{r}
 dt$FY15GivingCat<-cut(dt$FY15Giving,c(0,1,100,250,500,200000),right=FALSE)
 describe(dt$FY15GivingCat)
 dt$FY14GivingCat<-cut(dt$FY14Giving,c(0,1,100,250,500,200000),right=FALSE)
@@ -102,72 +148,11 @@ dt$Giver15 = as.integer(dt$FY15Giving>0)
 dt$Giver14 = as.integer(dt$FY14Giving>0)
 dt$Giver13 = as.integer(dt$FY13Giving>0)
 dt$Giver12 = as.integer(dt$FY12Giving>0)
-dt$YearsGiven = dt$Giver12 + dt$Giver13+dt$Giver14 + dt$Giver15
-
-#Create identifier for next degree (1) or none (0)
-dt$NextDegCat = 1-as.integer((dt$Next.Degree=="NONE"))
-
-#Group majors by broad categories
-
-#I think we should consider grouping majors below a certain threshold as "Rare" vs. "Common".  How were these categories decided upon?
-
-#AY-I think we should consider spliting "science" into "STEM" and "social Science"
-dt$MajorCat = ifelse(dt$Major %in% c('American Studies','Art','Chinese','Classics','Comparative Literature','English','English-Journalism','French','German','History','Independent','Music','Philosophy','Philosophy-Religion','Physical Education','Religious Studies','Russian','Spanish','Speech (Drama, etc.)','Theatre'), "HUM_ART", ifelse(dt$Major %in% c('Biology','Chemistry','Computer Science','Engineering','General Science','General Science-Biology','General Science-Chemistry','General Science-Math','General Science-Physics','Mathematics','Mathematics-Physics','Physics','Zoology'
-), "SCIENCE","OTHER"))
-
-dt$MaritalStatusCat = factor(dt$Marital.Status)
-dt$ClassYearCat = factor(dt$Class.Year)
-```
-
-
-##2.2 Exploratory Data Analysis:  
-
-##2.2.1 Univariate Analysis:  
-Let's examine each variable first starting with the "variable of interest" - 2016 contributions.
-
-FY16Giving: Given that the vast majority of people did not give in 2016 and the skewness of the data (with a few large contributions) - let's also look at the distribution after a log-transformation (this is something we may want to consider for our modeling purposes)  
-
-```{r}
-
-h1 = ggplot(data=dt,aes(x=FY16Giving)) +
-  geom_histogram(bins=20) +
-  ggtitle("Dist. of 2016 Contributions \n All Only $ Scale") + 
-  theme(plot.title = element_text(lineheight=1))
-h2 = ggplot(data=dt,aes(x=log10(FY16Giving))) +
-  geom_histogram(bins=20) +
-  ggtitle("Dist. of 2016 Contributions\n All - Log10 $ Scale") +
-  xlab("Log10 Contributions")
-  theme(plot.title = element_text(lineheight=1, face="bold"))
-  
-grid.arrange(h1,h2,ncol=2)
 
 ```
-
-Most of the alumni contributed \$0; so we see a big spike at 0 and then it tapers off quickly.  Let's do a log-transformation to see the distribution more clearly (note: 0 contributions are excluded in the log-transformed plot). The log-transformed distribution looks somewhat normal - with a few contributions in the tens of thousands of dollars.  
-
-Let's look at a distribution of just the "givers" (i.e. take out the zero contributions) to get a better picture.  
-
-```{r}
-
-h1 = ggplot(data=dt[FY16Giving>0],aes(x=FY16Giving)) +
-  geom_histogram(bins=20) +
-  ggtitle("Dist. of 2016 Contributions \nGivers Only $ Scale") + 
-  theme(plot.title = element_text(lineheight=1))
-h2 = ggplot(data=dt[FY16Giving>0],aes(x=log10(FY16Giving))) +
-  geom_histogram(bins=20) +
-  ggtitle("Dist. of 2016 Contributions\nGivers Only - Log10 $ Scale") +
-  xlab("Log10 Contributions")
-  theme(plot.title = element_text(lineheight=1, face="bold"))
-  
-grid.arrange(h1,h2,ncol=2)
-
-```
-Distribution on the left shows that there are many who contribute very small amounts.  So the distribution is still very skewed; so a log-transform might help us see the distribution better.
 
 Each year, roughly half the alumni population do not give anything.  20-25%% give less than \$100;  Around 14% Give \$100-250; About 4% give \$250-500 and less than 1% give more than $500.  In 2013, we had the highest percentage of the Alumni contributing (about 49%) and 2015 marked the lowest % giving (43%)
-#How do you know?  Where is the output of this?  
 
-#Where's the rest of the univariate analysis?
 
 ##2.2.2 Bivariate Analysis:  
 
@@ -181,56 +166,32 @@ plot(jitter(as.numeric(FY16GivingCat),2)~jitter(as.numeric(FY15GivingCat),1.5),d
 
 #Generic function to perform xtab on two variables and conduct LRT test of independence.
 
-#Let's comment on assocstats
-
-GenXtab = function(dframe, x1, x2, nlist){
+GenXtab = function(dframe, x1,x2, nlist){
   x1vsx2= xtabs(formula = ~x1+x2, data=dframe)
   names(dimnames(x1vsx2)) = nlist
   print(x1vsx2)
   print("Percentage of Column Totals Shown Below")
   print(round(prop.table(x1vsx2, 2),2))
-  a.s = assocstats(x1vsx2)
-  a.s
-  if (is.null(a.s$phi) | is.na(a.s$phi))      {print("Phi: Not Applicable")}
-    else if(abs(a.s$phi)>0.5){print("Phi: Large Effect")}
-    else if(abs(a.s$phi)>0.3){print("Phi: Medium Effect")}
-    else if(abs(a.s$phi)>0.1){print("Phi: Small Effect")}
-    else                     {print("Phi: Negligible Effect")}
-  
-  if (is.null(a.s$contingency))      {print("Contingency Coef: Not Applicable")}
-    else if(abs(a.s$contingency)>0.5){print("Contingency Coef: Large Effect")}
-    else if(abs(a.s$contingency)>0.3){print("Contingency Coef: Medium Effect")}
-    else if(abs(a.s$contingency)>0.1){print("Contingency Coef: Small Effect")}
-    else                             {print("Contingency Coef: Negligible Effect")}
-  
-  if (is.null(a.s$cramer))      {print("Cramer's V: Not Applicable")}
-    else if(abs(a.s$cramer)>0.5){print("Cramer's V: Large Effect")}
-    else if(abs(a.s$cramer)>0.3){print("Cramer's V: Medium Effect")}
-    else if(abs(a.s$cramer)>0.1){print("Cramer's V: Small Effect")}
-    else                        {print("Cramer's V: Negligible Effect")}
-  
+  assocstats(x1vsx2)
 }
 
 GenXtab(dt, dt$Giver16, dt$Giver15, c("FY16","FY15"))
 GenXtab(dt, dt$FY16GivingCat, dt$FY15GivingCat, c("FY16","FY15"))
 
+
 GenXtab(dt, dt$Giver16, dt$Giver14, c("FY16","FY14"))
 GenXtab(dt, dt$FY16GivingCat, dt$FY14GivingCat, c("FY16","FY14"))
+
 
 GenXtab(dt, dt$Giver16, dt$Giver13, c("FY16","FY13"))
 GenXtab(dt, dt$FY16GivingCat, dt$FY13GivingCat, c("FY16","FY13"))
 
+
 GenXtab(dt, dt$Giver16, dt$Giver12, c("FY16","FY12"))
 GenXtab(dt, dt$FY16GivingCat, dt$FY12GivingCat, c("FY16","FY12"))
 
-GenXtab(dt, dt$Giver16, dt$YearsGiven, c("FY16","YearsGiven"))
-GenXtab(dt, dt$FY16GivingCat, dt$YearsGiven, c("FY16","YearsGiven"))
+#does addinga ll these tables add too many pages? maybe a scatterplot matrix instead?
 
-GenXtab(dt, dt$Giver16, dt$MajorCat, c("FY16","MajorCat"))
-GenXtab(dt, dt$FY16GivingCat, dt$MajorCat, c("FY16","MajorCat"))
-
-GenXtab(dt, dt$Giver16, dt$NextDegCat, c("FY16","NextDegCat"))
-GenXtab(dt, dt$FY16GivingCat, dt$NextDegCat, c("FY16","NextDegCat"))
 
 ```
 
@@ -328,7 +289,9 @@ GenXtab(dt, dt$FY16GivingCat, dt$Gender, c("FY16", "Gender"))
 
 
 ```
-There is no statistical evidence that whether or not Alumni Give in 2016 varies by Gender (41% of Females Gave vs. 42% of Males). However when we look at the categories of contribution in 2016 by Gender, we see differences that cause us to reject the hypothesis that Gender and Giving Category in 2016 are independent. There may be other factors at play here, for e.g. we know that older alumni tend to give more than younger alumni; it is possible that there are fewer "older" female alumni (fewer women attended college in 1972) than Male. 
+There is no statistical evidence that whether or not Alumni Give in 2016 varies by Gender (41% of Females Gave vs. 42% of Males). However when we look at the categories of contribution in 2016 by Gender, we see differences that look intriguing and indicate that Gender might be a good predictor for giving. There may be other factors at play here, for e.g. we know that older alumni tend to give more than younger alumni; it is possible that there are fewer "older" female alumni (fewer women attended college in 1972) than Male. 
+
+> *AY Note: I'm not sure we should say something like "reject hypothesis in EDA stage, rather just say that the differences look significant enough that we might want to to explore it later.*
 
 
 ```{r}
@@ -379,6 +342,4 @@ ggplot(dt[FY16Giving>0],aes(factor(Class.Year),log10(FY16Giving))) +
 ```
 SO limiting it to just alumni who donated in 2016, we do see that even split by age, men donated more than women, except for the oldest alumni
 
-```{r}
-save(dt, file="dt_dataframe.Rda")
-```
+
