@@ -45,6 +45,16 @@ load("dt_dataframe.Rda")
 
 
 ```{r}
+#Variable Transformations
+dt$MeanGiving = (dt$FY12Giving + dt$FY13Giving + dt$FY14Giving + dt$FY15Giving)/4
+dt$MeanGivingCat<-cut(dt$MeanGiving,c(0,1,100,250,500,200000),right=FALSE)
+describe(dt$MeanGivingCat)
+#Changing the yearly categorical variables into ordered factors
+l1<-c("FY16GivingCat","FY15GivingCat","FY14GivingCat","FY13GivingCat","FY12GivingCat", "MeanGivingCat")
+
+#this is the right way to do it
+dt[,(l1):=lapply(.SD,ordered),.SDcols=l1]
+
 set.seed(1234)
 train_index = createDataPartition(dt$FY16GivingCat, p=0.8, list=FALSE, times=1)
 dt_train = dt[train_index]
@@ -78,6 +88,8 @@ PredAcc = function(data_test, mod){
   }else if (class(mod)[1] == "multinom"){
     test.prob = predict(mod, newdata = data_test, type = 'probs')  #Probability of each category
     test.pred = colnames(test.prob)[max.col(test.prob, ties.method = "random")]  #Category of highest probability
+  }else if (class(mod)[1] == 'clm'){
+    test.pred = predict(mod, newdata = data_test, type = 'class')  #Category of highest probability
   }
   
   results = data.frame(pred = test.pred, act = test.act)
@@ -102,6 +114,7 @@ Accuracy= function(CM_train, CM_test, model_name){
 
 
 ```{r}
+
 #2016 giving status as function of 2015
 model.fit1a = glm(Giver16~(Giver15), data=dt_train, family = binomial(link="logit"))
 summary(model.fit1a)
@@ -192,6 +205,7 @@ Anova(rb.fit1b, test="LR")
 CMTr = PredAcc(dt_train, mod=rb.fit1b)
 CMTe = PredAcc(dt_test, mod=rb.fit1b)
 ac_table_2 = rbind(ac_table_2, Accuracy(CMTr, CMTe, "rb.fit1b"))
+ac_table_2
 
 ```
 
@@ -206,5 +220,57 @@ Anova(rb.fit1b, test="LR")
 CMTr = PredAcc(dt_train, mod=rb.fit3a)
 CMTe = PredAcc(dt_test, mod=rb.fit3a)
 ac_table_3 =  Accuracy(CMTr, CMTe, "rb.fit3a")
-
+ac_table_3
 ```
+```{r}
+describe(dt_train$MeanGivingCat)
+
+library(ordinal)
+
+ord.mod1a = clm(FY16GivingCat~FY15GivingCat+FY14GivingCat+FY13GivingCat+FY12GivingCat, data = dt_train, model = TRUE)
+summary(ord.mod1a)
+Anova(ord.mod1a, test="Chisq")
+
+CMTr = PredAcc(dt_train, mod=ord.mod1a)
+CMTe = PredAcc(dt_test, mod=ord.mod1a)
+ac_table_4 =  Accuracy(CMTr, CMTe, "ord.mod1a")
+ac_table_4
+
+#Average of All Years By Itself
+ord.mod1b = clm(FY16GivingCat~MeanGivingCat, data = dt_train, model = TRUE)
+summary(ord.mod1b)
+Anova(ord.mod1b, test="Chisq")
+
+CMTr = PredAcc(dt_train, mod=ord.mod1b)
+CMTe = PredAcc(dt_test, mod=ord.mod1b)
+ac_table_4 = rbind(ac_table_4, Accuracy(CMTr, CMTe, "ord.mod1b"))
+ac_table_4
+
+#FY15 By Itself
+ord.mod1c = clm(FY16GivingCat~FY15GivingCat, data = dt_train, model = TRUE)
+summary(ord.mod1c)
+Anova(ord.mod1b, test="Chisq")
+
+CMTr = PredAcc(dt_train, mod=ord.mod1c)
+CMTe = PredAcc(dt_test, mod=ord.mod1c)
+ac_table_4 = rbind(ac_table_4, Accuracy(CMTr, CMTe, "ord.mod1c"))
+ac_table_4
+
+head(dt_test)
+#Kitchen Sink
+ord.mod1d = clm(FY16GivingCat~FY15GivingCat+FY14GivingCat+FY13GivingCat+FY12GivingCat+MeanGivingCat+NextDegCat+ClassYearCat+MajorCat+MaritalStatusCat+YearsGiven, data = dt_train, model = TRUE)
+
+ord.mod1d = clm(FY16GivingCat~MeanGivingCat+NextDegCat+ClassYearCat+MajorCat+MaritalStatusCat+YearsGiven, data = dt_train, model = TRUE)
+ord.mod1d = multinom(FY16GivingCat~MeanGivingCat+NextDegCat+ClassYearCat+MajorCat+MaritalStatusCat+YearsGiven, data = dt_train, model = TRUE)
+ord.mod1d = multinom(FY16GivingCat~FY15GivingCat+FY14GivingCat+FY13GivingCat+FY12GivingCat, data = dt_train, model = TRUE)
+ord.mod1d = multinom(FY16GivingCat~FY15GivingCat+FY14GivingCat, data = dt_train, model = TRUE)
+
+summary(ord.mod1d)
+Anova(ord.mod1d, test="Chisq")
+
+CMTr = PredAcc(dt_train, mod=ord.mod1d)
+CMTe = PredAcc(dt_test, mod=ord.mod1d)
+ac_table_4 =  rbind(ac_table_4,Accuracy(CMTr, CMTe, "ord.mod1d"))
+ac_table_4
+```
+
