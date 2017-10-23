@@ -28,18 +28,21 @@ library(effsize) #Used to calculate Cohen's D for T-Test
 library(aod)    #Used for effect size of the logit model
 library(mcprofile) #Used for confidence intervals
 library(package = MASS)  # Location of parcoord() function
-library(vcd)
+library(vcd)#visualizing categorical data
 library(data.table)
 library(stargazer)
 library(nnet)
-library(ordinal)
+library(ordinal)# regressing ordinal categories
 library(caret)
+library(e1071)
+
+ 
 
 #can delete this line below if dataset is already in workspace
 #otherwise, run SECTION1.Rmd file (need this process of storing the data frame and
 #loading it again if we knit the SECTION files separately)
 
-load("dt_dataframe.Rda")
+#load("dt_dataframe.Rda")
 
 ```
 
@@ -208,3 +211,26 @@ CMTe = PredAcc(dt_test, mod=rb.fit3a)
 ac_table_3 =  Accuracy(CMTr, CMTe, "rb.fit3a")
 
 ```
+
+
+```{r ay_prior_year}
+#using full data set
+#mostly replicating previous work
+mod.multinom.1<-multinom(FY16GivingCat~FY15GivingCat, data=dt, model = TRUE)
+summary(mod.multinom.1)
+```
+```{r ay_more_stuff}
+#also replicating previous stuff
+mod.multinom.2<-multinom(FY16GivingCat~FY15GivingCat+FY14GivingCat+FY13GivingCat+FY12GivingCat, data=dt, model = TRUE)
+summary(mod.multinom.2)
+anova(mod.multinom.1,mod.multinom.2)
+mod.multinom.gar<-multinom(FY16GivingCat~FY15GivingCat+MajorCat, data=dt, model = TRUE)
+mod.multinom.3<-multinom(FY16GivingCat~FY15GivingCat+FY14GivingCat+FY13GivingCat+FY12GivingCat+Gender+factor(Class.Year)+AttendenceEvent+NextDegCat+ClassYearCat+MaritalStatusCat, data=dt, model = TRUE)
+anova(mod.multinom.2,mod.multinom.3)
+#so adding everything is significant-does it pass AIC test?
+AIC(mod.multinom.2,mod.multinom.3)
+BIC(mod.multinom.2,mod.multinom.3)
+#AIC and BIC are higher for the kitchen sink approach, so should choose a more contrainsted model,
+
+```
+
