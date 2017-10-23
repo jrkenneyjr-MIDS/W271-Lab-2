@@ -109,15 +109,15 @@ Accuracy= function(CM_train, CM_test, model_name){
 }
 
 PrintModel=function(mod){
-  #basically printing the summary functino - with fewer decimans
+  #basically printing the summary function - with fewer decimals
   x = summary(mod)
   coefs = round(x$coefficients,2)
-  stderr = round(x$standard.errors,2)
+  #stderr = round(x$standard.errors,2)
   print((x$call)$formula)
   print("coeffs")
   print(coefs)
-  print("standard errors")
-  print(stderr)
+  #print("standard errors")
+  #print(stderr)
   
 }
 
@@ -135,7 +135,9 @@ PrintModel=function(mod){
 model.fit2a = multinom(FY16GivingCat~FY15, data=dt_train, model = TRUE, trace=FALSE)
 #summary(model.fit2a)
 PrintModel(model.fit2a)
-Anova(model.fit2a, test="LR")
+an1 = Anova(model.fit2a, test="LR")
+names(an1)
+an1
 
 CMTr = PredAcc(dt_train, mod=model.fit2a)
 CMTe = PredAcc(dt_test, mod=model.fit2a)
@@ -161,7 +163,6 @@ Anova(model.fit2b, test="LR")
 CMTr = PredAcc(dt_train, mod=model.fit2b)
 CMTe = PredAcc(dt_test, mod=model.fit2b)
 ac_table = rbind(ac_table, Accuracy(CMTr, CMTe, "model.fit2b"))
-
 ```
 
 
@@ -186,7 +187,6 @@ Anova(model.fit2d, test="LR")
 CMTr = PredAcc(dt_train, mod=model.fit2d)
 CMTe = PredAcc(dt_test, mod=model.fit2d)
 ac_table = rbind(ac_table, Accuracy(CMTr, CMTe, "model.fit2d"))
-
 ```
 
 ###Model Specification:  
@@ -197,8 +197,6 @@ $log(\frac{\hat{\pi}_{[1,100)}}{\hat{\pi}_{[0,1)}}) = -2.87 + 1.10 \cdot FY15[1,
 
 
 ```{r message=FALSE, warning=FALSE}
-
-
 #Below are the class of models without using prior year giving info
 model.fit3a = multinom(FY16GivingCat~NextDeg+Event+Class+MS+Gender, data=dt_train, model=TRUE, trace=FALSE)
 
@@ -213,3 +211,27 @@ print("Model Accuracy Comparison")
 print(ac_table)
 ```
 
+```{r message=FALSE, warning=FALSE}
+library(ordinal)
+model.fit4a = clm(FY16GivingCat~FY15+YearsGiven, data=dt_train, model=TRUE, trace=FALSE)
+names(model.fit4a)
+PrintModel(model.fit4a)
+Anova(model.fit4a, test="F")
+CMTr = PredAcc(dt_train, mod=model.fit4a)
+CMTe = PredAcc(dt_test, mod=model.fit4a)
+ac_table =  rbind(ac_table,Accuracy(CMTr, CMTe, "model.fit4a"))
+
+
+model.fit4b = clm(FY16GivingCat~FY15+YearsGiven, data=dt_train, model=TRUE, trace=FALSE)
+PrintModel(model.fit4b)
+Anova(model.fit4b, test="F")
+CMTr = PredAcc(dt_train, mod=model.fit4b)
+CMTe = PredAcc(dt_test, mod=model.fit4b)
+ac_table =  rbind(ac_table,Accuracy(CMTr, CMTe, "model.fit4b"))
+
+print("Model Accuracy Comparison")
+print(ac_table)
+
+CMTr$byClass[,1]
+names(CMTr)
+```
