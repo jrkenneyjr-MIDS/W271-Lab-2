@@ -1,0 +1,215 @@
+---
+title: "Lab 02"
+author: "Alex Yang, John Kenney, Ram Balasubramanian"
+subtitle: "w271"
+date: "Oct 12, 2017"
+output: pdf_document
+fontsize: 11pt
+geometry: margin=0.75in
+---
+
+
+#SECTION - 3  STATISTICAL MODELING:
+Section 3: Statistical Modeling. Start the section summarizing the key results - what variables, if any, are the key predictors of the year 2016 contribution? What are the key techniques you have
+experimented? What method did you use in your final model? How did you choose the final model?
+What model performance criteria did you use to choose the final model? What statistical infernece did
+you perform? Explain them. Comment on statistical significance vs. economic significance.
+
+```{r message=FALSE, warning=FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+#Libraries required 
+library(car)
+library(dplyr)
+library(Hmisc)#Used by author for 3D plotting
+library(ggplot2)
+library(gridExtra)
+library(effsize) #Used to calculate Cohen's D for T-Test
+library(aod)    #Used for effect size of the logit model
+library(mcprofile) #Used for confidence intervals
+library(package = MASS)  # Location of parcoord() function
+library(vcd)
+library(data.table)
+library(stargazer)
+library(nnet)
+library(ordinal)
+library(caret)
+
+#can delete this line below if dataset is already in workspace
+#otherwise, run SECTION1.Rmd file (need this process of storing the data frame and
+#loading it again if we knit the SECTION files separately)
+
+load("dt_dataframe.Rda")
+
+#Renaming to shorter names - to fit display
+names(dt)[names(dt)=="FY15GivingCat"] = "FY15"
+names(dt)[names(dt)=="FY14GivingCat"] = "FY14"
+names(dt)[names(dt)=="FY13GivingCat"] = "FY13"
+names(dt)[names(dt)=="FY12GivingCat"] = "FY12"
+names(dt)[names(dt)=="AttendenceEvent"] = "Event"
+names(dt)[names(dt)=="ClassYearCat"] = "Class"
+names(dt)[names(dt)=="Marital.Status"] = "MS"
+names(dt)[names(dt)=="NextDegCat"] = "NextDeg"
+
+
+```
+
+
+```{r}
+set.seed(1234)
+train_index = createDataPartition(dt$FY16GivingCat, p=0.8, list=FALSE, times=1)
+dt_train = dt[train_index]
+dt_test = dt[-train_index]
+#verify that the test and train are in the same proportions for 2016 categories
+# xtabs(~FY16GivingCat, data=dt_train)
+# xtabs(~FY16GivingCat, data=dt_test)
+# round(prop.table(xtabs(~FY16GivingCat, data=dt_train)),2)
+# round(prop.table(xtabs(~FY16GivingCat, data=dt_test)),2)
+```
+
+
+
+
+```{r}
+
+PredAcc = function(data_set, mod){
+  #Function to  evaluate accuracy of model
+    #data_test: a data frame or table that contains  data
+    #mod: model fit on data
+
+  #Predict the responses given model
+  
+  dep = names(mod$model[1])  #Name of Dependent Variable
+  act = data_set[, ..dep]   #List of Actual Observed Outcomes
+  if (class(mod)[1] == "glm"){
+    prob = predict(mod, newdata = data_set, type = "response") #Probability Binary is True
+    pred = ifelse(prob>0.5, 1, 0)       #Predicted Result
+  }else if (class(mod)[1] == "multinom"){
+    prob = predict(mod, newdata = data_set, type = 'probs')  #Probability of each category
+    pred = colnames(prob)[max.col(prob, ties.method = "random")]  #Category of highest probability
+  }else if (class(mod)[1] == 'clm'){
+    pred = predict(mod, newdata = data_set, type = 'class')  #Category of highest probability
+  }
+  
+  results = data.frame(predicted = pred, actual = act)
+  #If we decide not to use Confusion Matrix...
+  #accuracy = round(mean(test.act == test.pred),3)  #Part of confusionMatrix             
+  #GenXtab(dframe = results, x1 = results[,1], x2 = results[,2], nlist = c("Predicted","Actual"))                       
+  #paste("Overall Prediction Accuracy = ", accuracy)
+  
+  confusionMatrix(results[,1],results[,2], positive = '1') #Analysis of Prediction Accuracy Stats
+}
+
+Accuracy= function(CM_train, CM_test, model_name){
+  #Takes in 2 confusion matrices - one for train and 1 for test
+  # and returns a row with accuracy value for test and train sets
+  round(data.frame(row.names = model_name, TrainAcc = CM_train$overall[1], 
+                   TestAcc = CM_test$overall[1]),2)
+  
+}
+
+PrintModel=function(mod){
+  #basically printing the summary functino - with fewer decimans
+  x = summary(mod)
+  coefs = round(x$coefficients,2)
+  stderr = round(x$standard.errors,2)
+  print((x$call)$formula)
+  print("coeffs")
+  print(coefs)
+  print("standard errors")
+  print(stderr)
+  
+}
+
+```
+
+
+
+
+
+```{r message=FALSE}
+#models for determining category - using 2016giving category as function of 
+#2015 giving category 
+
+#Start with the simplest model. Assume everything 
+model.fit2a = multinom(FY16GivingCat~FY15, data=dt_train, model = TRUE, trace=FALSE)
+#summary(model.fit2a)
+PrintModel(model.fit2a)
+Anova(model.fit2a, test="LR")
+
+CMTr = PredAcc(dt_train, mod=model.fit2a)
+CMTe = PredAcc(dt_test, mod=model.fit2a)
+ac_table = Accuracy(CMTr, CMTe, "model.fit2a")
+
+#Naive model - just use FY15 category to predict 2016 - we should be able to do better than this
+pred_val = dt_train$FY15
+act_val = dt_train$FY16GivingCat
+results = data.frame(predicted=pred_val, actual=act_val)
+CMTr = confusionMatrix(results[,1],results[,2], positive='1')
+
+pred_val = dt_test$FY15
+act_val = dt_test$FY16GivingCat
+results = data.frame(predicted=pred_val, actual=act_val)
+CMTe = confusionMatrix(results[,1],results[,2], positive='1')
+ac_table = rbind(ac_table,Accuracy(CMTr, CMTe, "naive_model"))
+
+#uSe all historical giving categories (massive collinearity) 
+model.fit2b = multinom(FY16GivingCat~FY15+FY14+FY13+FY12, data=dt_train, model = TRUE, trace=FALSE)
+#summary(model.fit2b)
+PrintModel(model.fit2b)
+Anova(model.fit2b, test="LR")
+CMTr = PredAcc(dt_train, mod=model.fit2b)
+CMTe = PredAcc(dt_test, mod=model.fit2b)
+ac_table = rbind(ac_table, Accuracy(CMTr, CMTe, "model.fit2b"))
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+
+#Address collinearity by using 2015 giving category - substituting yearsgiven instead of each year's category
+model.fit2c = multinom(FY16GivingCat~FY15+YearsGiven, data=dt_train, model=TRUE, trace=FALSE)
+#summary(model.fit2c)
+PrintModel(model.fit2c)
+Anova(model.fit2c, test="LR")
+CMTr = PredAcc(dt_train, mod=model.fit2c)
+CMTe = PredAcc(dt_test, mod=model.fit2c)
+ac_table= rbind(ac_table, Accuracy(CMTr, CMTe, "model.fit2c"))
+
+
+#Add other variables that seemed significant in the EDA.  We believe that the impact of these
+#variables is already encapsulated in the FY15GivingCategory (see writeup for rationale)
+model.fit2d = multinom(FY16GivingCat~FY15+YearsGiven+Event+NextDeg+Gender, data=dt_train, model=TRUE, trace=FALSE)
+#summary(model.fit2d)
+PrintModel(model.fit2d)
+Anova(model.fit2d, test="LR")
+CMTr = PredAcc(dt_train, mod=model.fit2d)
+CMTe = PredAcc(dt_test, mod=model.fit2d)
+ac_table = rbind(ac_table, Accuracy(CMTr, CMTe, "model.fit2d"))
+
+```
+
+###Model Specification:  
+$log(\frac{\hat{\pi}_{[1,100)}}{\hat{\pi}_{[0,1)}}) = -2.87 + 1.10 \cdot FY15[1,100) -0.65\cdot FY15[100,250)-15.24\cdot FY15[250,500)-12.49\cdot FY15[500,20000) + 0.8\cdot YearsGiven$  
+
+###
+
+
+
+```{r message=FALSE, warning=FALSE}
+
+
+#Below are the class of models without using prior year giving info
+model.fit3a = multinom(FY16GivingCat~NextDeg+Event+Class+MS+Gender, data=dt_train, model=TRUE, trace=FALSE)
+
+#summary(model.fit3a)
+PrintModel(model.fit3a)
+Anova(model.fit3a, test="LR")
+CMTr = PredAcc(dt_train, mod=model.fit3a)
+CMTe = PredAcc(dt_test, mod=model.fit3a)
+ac_table =  rbind(ac_table,Accuracy(CMTr, CMTe, "model.fit3a"))
+
+print("Model Accuracy Comparison")
+print(ac_table)
+```
+
