@@ -90,10 +90,10 @@ Let's group the yearly contributions by the categories that the university is in
 
 ```{r}
 dt$FY16GivingCat<-cut(dt$FY16Giving,c(0,1,100,250,500,200000),right=FALSE)
-dt$FY14GivingCat<-cut(dt$FY14Giving,c(0,1,100,250,500,200000),right=FALSE)
-dt$FY15GivingCat<-cut(dt$FY15Giving,c(0,1,100,250,500,200000),right=FALSE)
-dt$FY13GivingCat<-cut(dt$FY13Giving,c(0,1,100,250,500,200000),right=FALSE)
-dt$FY12GivingCat<-cut(dt$FY12Giving,c(0,1,100,250,500,200000),right=FALSE)
+dt$FY15<-cut(dt$FY15Giving,c(0,1,100,250,500,200000),right=FALSE)
+dt$FY14<-cut(dt$FY14Giving,c(0,1,100,250,500,200000),right=FALSE)
+dt$FY13<-cut(dt$FY13Giving,c(0,1,100,250,500,200000),right=FALSE)
+dt$FY12<-cut(dt$FY12Giving,c(0,1,100,250,500,200000),right=FALSE)
 
 # create an indicator for "giver" and "non giver" for each year.
 dt$Giver16 = as.integer(dt$FY16Giving>0)
@@ -104,15 +104,16 @@ dt$Giver12 = as.integer(dt$FY12Giving>0)
 dt$YearsGiven = dt$Giver12 + dt$Giver13+dt$Giver15 + dt$Giver15
 
 #Create identifier for next degree (1) or none (0)
-dt$NextDegCat = 1-as.integer((dt$Next.Degree=="NONE"))
+dt$NextDeg = 1-as.integer((dt$Next.Degree=="NONE"))
 
 #Group majors by broad categories
 
 dt$MajorCat = ifelse(dt$Major %in% c('American Studies','Art','Chinese','Classics','Comparative Literature','English','English-Journalism','French','German','History','Independent','Music','Philosophy','Philosophy-Religion','Physical Education','Religious Studies','Russian','Spanish','Speech (Drama, etc.)','Theatre'), "HUM_ART", ifelse(dt$Major %in% c('Biology','Chemistry','Computer Science','Engineering','General Science','General Science-Biology','General Science-Chemistry','General Science-Math','General Science-Physics','Mathematics','Mathematics-Physics','Physics','Zoology'
 ), "STEM",ifelse(dt$Major %in% c("Economics","Economics-Regional Stds.","Sociology","Pyschology","Pol. Sci.-Regional Stds.","Sociology-Anthropology","Political Science","Anthropology","Economics-Business"), "SOCIAL_SCIENCE","OTHER")))
 
-dt$MaritalStatusCat = factor(dt$Marital.Status)
-dt$ClassYearCat = factor(dt$Class.Year)
+dt$MS = factor(dt$MS)
+dt$Class = factor(dt$Class.Year)
+names(dt)[names(dt)=="Event"] = "Event"
 ```
 
 ##2.2 Exploratory Data Analysis:  
@@ -124,7 +125,7 @@ Let's examine each variable first starting with the "variable of interest" - 201
 
 In 2016, roughly half the alumni population did not give anything.  20-25%% gave less than \$100;  Around 15% gave \$100-250; About 4% gave \$250-500 and less than 1% give more than $500.  We see from the figures that the alumni contributions in all years followed similar distributions. In 2013, we had the highest percentage of the Alumni contributing (about 49%) and 2015 marked the lowest % giving (43%)
 ```{r histograms}
-lcat<-c("FY16GivingCat","FY14GivingCat","FY15GivingCat","FY13GivingCat","FY12GivingCat")
+lcat<-c("FY16GivingCat","FY14","FY15","FY13","FY12")
 dt[,lcat,with=FALSE] %>%
   na.omit()%>%
   gather()%>%
@@ -154,7 +155,7 @@ Only ten percent of alumni graduated in the 1970s and the largest proportion gra
 ####Marital Status:
 
 ```{r}
-prop.table(table(dt$Marital.Status))
+prop.table(table(dt$MS))
 ```
 More than half are married, with only 6 percent divorced and 1 percent widowed
 
@@ -168,7 +169,7 @@ Humanities and Arts comprise almost half the majors, with social science second 
 #### Next Degree:
 
 ```{r}
-prop.table(table(dt$NextDegCat))
+prop.table(table(dt$NextDeg))
 ```
 Mroe than 60% of alumni have a higher degree
 
@@ -179,9 +180,9 @@ Mroe than 60% of alumni have a higher degree
 Let's look at how the giving categories relate to each other. 
 ```{r}
 ggScatterJitter<-function(yearcat1,yearcat2){
-  yeargive1<-paste("FY",toString(yearcat1),"GivingCat",sep='')
-  yeargive2<-paste("FY",toString(yearcat2),"GivingCat",sep='')
-  #print(yeargive)
+  if(yearcat1==16){yeargive1<-"FY16GivingCat"}else{yeargive1<-paste("FY",toString(yearcat1),sep='')}
+  if(yearcat2==16){yeargive2<-"FY16GivingCat"}else{yeargive2<-paste("FY",toString(yearcat2),sep='')}
+
   p<-ggplot(dt,aes_string(x=yeargive1,y=yeargive2))
   p<-p+geom_jitter(size=.2,alpha=.5)
   p<-p+scale_x_discrete(name=paste("'",toString(yearcat1)," Giving Cat"),labels=c("1","2","3","4","5"))+
@@ -243,8 +244,8 @@ GenXtab = function(dframe, x1, x2, nlist){
 Attendance at an alumni event is the factor (other than previous years' contributions), that our intuitions syas will have the strongest relationship with 2016 give.
 
 ```{r}
-ggplot(dt,aes(factor(AttendenceEvent),as.numeric(FY16GivingCat))) +
-  geom_boxplot(aes(fill=factor(AttendenceEvent))) +
+ggplot(dt,aes(factor(Event),as.numeric(FY16GivingCat))) +
+  geom_boxplot(aes(fill=factor(Event))) +
   ggtitle("Giving Category by Attendance at Event") +
   geom_jitter() +
   scale_x_discrete(name="Attendance",labels=c("No","Yes"))+
@@ -255,7 +256,7 @@ ggplot(dt,aes(factor(AttendenceEvent),as.numeric(FY16GivingCat))) +
 And there is a relationship between attendence at alumni events in 2012-2015 and 2016 giving.  50% of those attending gave in 2016 while only 28% of those not attending gave in 2016.  
 
 ```{r}
-GenXtab(dframe=dt,x1=dt$AttendenceEvent,x2=dt$FY16GivingCat,nlist=c("Attendence","FY16Cat"))
+GenXtab(dframe=dt,x1=dt$Event,x2=dt$FY16GivingCat,nlist=c("Attendence","FY16Cat"))
 ```
 
 This implies there is a relationship between FY16 Giving Category and the whether or not hte alumnus attended an event.
@@ -265,15 +266,15 @@ This implies there is a relationship between FY16 Giving Category and the whethe
 We no not expect a relationship between 2016 contributions and marital status
 
 ```{r}
-ggplot(dt,aes(factor(Marital.Status),as.numeric(FY16GivingCat))) +
-  geom_boxplot(aes(fill=factor(Marital.Status))) +
+ggplot(dt,aes(factor(MS),as.numeric(FY16GivingCat))) +
+  geom_boxplot(aes(fill=factor(MS))) +
   ggtitle("Giving Category by Marital Status") +
   geom_jitter() +
   scale_x_discrete(name="Marital Status",labels=c("Divorced","Married","Single","Widowed"))+
   scale_y_continuous(name="Giving Category",breaks=1:5,labels=c("[0,1)","[1,100)","[100,250)",
                                                                 "[250,500)","[500,2e+05)")) +
   theme(plot.title = element_text(lineheight=1, face="bold"))
-GenXtab(dframe=dt,x1=dt$Marital.Status,x2=dt$FY16GivingCat,nlist=c("Marital","FY16Cat"))
+GenXtab(dframe=dt,x1=dt$MS,x2=dt$FY16GivingCat,nlist=c("Marital","FY16Cat"))
 ```
 
 Most of the Alumni fall into either Married or Single category and  Married Alumni are more likely to give than Single.  
@@ -306,7 +307,7 @@ grid.arrange(year1,year2,ncol=1)
 ```
 In the first chart, we see the more recent graduates tend to be more likely to have donated nothing. In the second chart, we filter out all the non-givers, and we see that older graduates tend to have donated more, given that they donated anything at all.
 ```{r}
-GenXtab(dframe=dt,x1=dt$ClassYearCat,x2=dt$FY16GivingCat,nlist=c("Class","FY16Cat"))
+GenXtab(dframe=dt,x1=dt$Class,x2=dt$FY16GivingCat,nlist=c("Class","FY16Cat"))
 ```
 Again, we find that there is a weak relationship between class year and giving.
 ### Giving in 2016 by Gender:  
@@ -357,7 +358,7 @@ GenXtab(dframe=dt,x1=dt$Gender,x2=dt$FY16GivingCat,nlist=c("Gender","FY16Cat"))
 Again, we see that the relation between gender and giving is weak.
 
 ```{r}
-GenXtab(dframe=dt,x1=dt$Gender,x2=dt$ClassYearCat,nlist=c("Gender","Class"))
+GenXtab(dframe=dt,x1=dt$Gender,x2=dt$Class,nlist=c("Gender","Class"))
 ```
 
 ### Bivariate Analysis Conclusion:
@@ -365,6 +366,6 @@ GenXtab(dframe=dt,x1=dt$Gender,x2=dt$ClassYearCat,nlist=c("Gender","Class"))
 Analysis of the variables shows that the most significant predictor of FY16 giving is likely going to be the giving from a previous year. Adding all the other year's giving might help our model, or it might cause issues with colinearity. We can add other covariates, such as class year or attendance at an alumni event, but they are unlikely to add much.
 
 ```{r}
-GenXtab(dframe=dt,x1=dt$FY15GivingCat,x2=dt$FY16GivingCat,nlist=c("FY16","FY15"))
+GenXtab(dframe=dt,x1=dt$FY15,x2=dt$FY16GivingCat,nlist=c("FY16","FY15"))
 ```
 
