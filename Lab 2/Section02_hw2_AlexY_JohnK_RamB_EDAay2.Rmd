@@ -111,9 +111,9 @@ dt$NextDeg = 1-as.integer((dt$Next.Degree=="NONE"))
 dt$MajorCat = ifelse(dt$Major %in% c('American Studies','Art','Chinese','Classics','Comparative Literature','English','English-Journalism','French','German','History','Independent','Music','Philosophy','Philosophy-Religion','Physical Education','Religious Studies','Russian','Spanish','Speech (Drama, etc.)','Theatre'), "HUM_ART", ifelse(dt$Major %in% c('Biology','Chemistry','Computer Science','Engineering','General Science','General Science-Biology','General Science-Chemistry','General Science-Math','General Science-Physics','Mathematics','Mathematics-Physics','Physics','Zoology'
 ), "STEM",ifelse(dt$Major %in% c("Economics","Economics-Regional Stds.","Sociology","Pyschology","Pol. Sci.-Regional Stds.","Sociology-Anthropology","Political Science","Anthropology","Economics-Business"), "SOCIAL_SCIENCE","OTHER")))
 
-dt$MS = factor(dt$MS)
+dt$MS = factor(dt$Marital.Status)
 dt$Class = factor(dt$Class.Year)
-names(dt)[names(dt)=="Event"] = "Event"
+names(dt)[names(dt)=="AttendenceEvent"] = "Event"
 ```
 
 ##2.2 Exploratory Data Analysis:  
@@ -266,8 +266,8 @@ This implies there is a relationship between FY16 Giving Category and the whethe
 We no not expect a relationship between 2016 contributions and marital status
 
 ```{r}
-ggplot(dt,aes(factor(MS),as.numeric(FY16GivingCat))) +
-  geom_boxplot(aes(fill=factor(MS))) +
+ggplot(dt,aes(MS,as.numeric(FY16GivingCat))) +
+  geom_boxplot(aes(fill=MS)) +
   ggtitle("Giving Category by Marital Status") +
   geom_jitter() +
   scale_x_discrete(name="Marital Status",labels=c("Divorced","Married","Single","Widowed"))+
@@ -310,6 +310,12 @@ In the first chart, we see the more recent graduates tend to be more likely to h
 GenXtab(dframe=dt,x1=dt$Class,x2=dt$FY16GivingCat,nlist=c("Class","FY16Cat"))
 ```
 Again, we find that there is a weak relationship between class year and giving.
+### Figures:
+```{r figures}
+
+```
+
+
 ### Giving in 2016 by Gender:  
 
 ```{r}
