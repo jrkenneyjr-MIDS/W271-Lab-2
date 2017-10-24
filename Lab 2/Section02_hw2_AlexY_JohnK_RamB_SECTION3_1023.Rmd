@@ -10,10 +10,40 @@ geometry: margin=0.75in
 
 
 #SECTION - 3  STATISTICAL MODELING:
-Section 3: Statistical Modeling. Start the section summarizing the key results - what variables, if any, are the key predictors of the year 2016 contribution? What are the key techniques you have
-experimented? What method did you use in your final model? How did you choose the final model?
-What model performance criteria did you use to choose the final model? What statistical infernece did
-you perform? Explain them. Comment on statistical significance vs. economic significance.
+Section 3: Statistical Modeling. Start the section summarizing the key results - what variables, if any, are the key predictors of the year 2016 contribution? What are the key techniques you have experimented? What method did you use in your final model? How did you choose the final model? What model performance criteria did you use to choose the final model? What statistical infernece did you perform? Explain them. Comment on statistical significance vs. economic significance.
+
+##3.1 KEY RESULTS:  
+We found that the best way to predict the level of contribution in 2016 for a particular person is to look at their level of contribution in 2015 and how often they have given in the past. Here is why we think this makes sense: we believe alumni-giving would be influenced by factors like connectedness to the university (Alumni event attendance, proximity to univesity), affluence (utilizing proxy measures like class year, major, next degree, marital status), exposure to marketing materials about the university, news related to the university etc.   However many of these factors do not change much (or at all) in the time horizon for which we were provided data (even if they changed, we were not provided the change information) - which basically means that we should be able to witness the influence of these factors in past years' giving information. Said another way these factors combined to result in a certain pattern of giving in each of the years 2012 - 2015;  so when we want to predict 2016 giving, we can simply use the past giving which encapsulates all the factors that influence someone to give.  
+
+The functional form of our chosen model for predicting 2016 is:  
+
+$log(\frac{\hat{\pi}_{j}}{\hat{\pi}_{base}}) = \beta_{0j} +\sum_{k=1}^{4}\beta_{kj} \cdot FY15_{k}+\beta_{4j}\cdotYearsGiven$  
+
+where $FY15_k$ is the category of giving in 2015; and $YearsGiven$ is the number of years (between 2012 and 2015) that the person contributed; $\hat{\pi}_j$ is the probability of being in the $j^{th}$ category; $\hat{\pi}_{base}$ is the probability of being the base category (in our case this is the [0,1) category or "non-givers").  
+
+We went with a multinomial logistic regression technique because the target variable is multinomial.  Let's run through the assumptions behind a multinomial logistic regression to make sure that it is applicable here:  
+1. The target variable is a categorical variable
+2. While we do not have additional information about the exact sampling technique employed, since it is mentione that it is a carefully selected sample - we assume that it is an independent, identically distributed sample.
+3. No perfect collinearity (we will address this by the choice of dependent variables)
+4. Linearity - log odds of the the dependent variable is linearly related to the independent variables (this holds by the structural assumption)
+5. No complete separation (we don't observe any, but we can also rely on the R software to identify this for us)
+
+##3.1.1 MODEL INTERPRETATION
+
+
+##3.2 OTHER MODELS AND TECHNIQUES ATTEMPTED:  
+
+
+
+##3.3 MODEL EVALUATION & SELECTION:
+
+
+##3.4 STATISTICAL INFERENCE:
+
+
+##3.5 STATISTICAL SIGNIFICANCE VS. ECONOMIC SIGNIFICANCE
+
+
 
 ```{r message=FALSE, warning=FALSE}
 library(knitr)
